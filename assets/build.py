@@ -794,30 +794,77 @@ def footer():
 
 # ── Live seismic data ────────────────────────────────────────────────────────
 
-FEED = ("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/"
-        "2.5_day.geojson")
+FEED_DAY = ("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/"
+            "2.5_day.geojson")
+FEED_MONTH = ("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/"
+              "2.5_month.geojson")
 SNAPSHOT = HERE / "quake-snapshot.json"
 
 
+def _get(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "daifukus-profile/1.0 (+https://github.com/daifukus)"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)
+
+
+def _mags(doc):
+    return [f["properties"]["mag"] for f in doc.get("features", [])
+            if (f.get("properties") or {}).get("mag") is not None]
+
+
+def completeness(mags):
+    """Mc by maximum curvature (Wiemer & Wyss, 2000), the same method the app
+    uses. The M2.5+ feed is complete at 2.5 only over the United States; over
+    the whole globe it is complete somewhere above M4, so taking 2.5 as Mc
+    understates b badly — the first live run of this workflow reported 0.38.
+    The mode of the 0.1-wide magnitude bins, plus the usual 0.2 correction, is
+    what the estimator actually needs."""
+    if len(mags) < 50:
+        return None
+    bins = {}
+    for m in mags:
+        bins[round(m, 1)] = bins.get(round(m, 1), 0) + 1
+    return max(bins.items(), key=lambda kv: (kv[1], -kv[0]))[0] + 0.2
+
+
+def b_value(mags):
+    """Aki (1965) maximum likelihood above Mc, with the 0.05 bin correction.
+
+    Returns (label, mc, n) or (None, ...) when the sample is too small to say
+    anything — in which case the panel shows the count instead of a number
+    nobody should trust."""
+    mc = completeness(mags)
+    if mc is None:
+        return None, None, len(mags)
+    above = [m for m in mags if m >= mc - 0.001]
+    if len(above) < 50:
+        return None, mc, len(above)
+    mean = sum(above) / len(above)
+    denom = mean - (mc - 0.05)
+    if denom <= 0.05:
+        return None, mc, len(above)
+    return math.log10(math.e) / denom, mc, len(above)
+
+
 def fetch_quake():
-    """The real last-24 h catalogue, reduced to what the panel draws.
+    """The real catalogue, reduced to what the panel draws.
+
+    Two feeds, because they answer different questions — the same split the
+    app itself makes. The day feed is the trace and the per-2 h bars. The month
+    feed is the only one with enough events to fit a b-value on.
 
     Refreshed by .github/workflows/refresh-quake.yml. On any failure the caller
     keeps the committed snapshot: a profile showing yesterday's numbers beats
     one showing a stack trace.
     """
-    req = urllib.request.Request(FEED, headers={
-        "User-Agent": "daifukus-profile/1.0 (+https://github.com/daifukus)"})
-    with urllib.request.urlopen(req, timeout=25) as r:
-        data = json.load(r)
-
-    feats = [f for f in data.get("features", [])
+    day = _get(FEED_DAY)
+    feats = [f for f in day.get("features", [])
              if (f.get("properties") or {}).get("mag") is not None
              and (f.get("properties") or {}).get("time") is not None]
     now = datetime.now(timezone.utc)
     now_ms = now.timestamp() * 1000
 
-    mags = [f["properties"]["mag"] for f in feats]
     buckets = [0] * 12
     for f in feats:
         age_h = (now_ms - f["properties"]["time"]) / 3_600_000
@@ -827,28 +874,29 @@ def fetch_quake():
     bars = [max(6, round(c / peak * 100)) for c in reversed(buckets)]
 
     top = sorted(feats, key=lambda f: -f["properties"]["mag"])[:5]
-    events = {}
-    span = 520
+    events, span = {}, 520
     for i, f in enumerate(top):
         m = f["properties"]["mag"]
         pos = int(40 + i * (span - 90) / max(1, len(top) - 1))
         events[pos] = max(0.28, min(1.0, (m - 2.5) / 4.0))
 
-    # Aki (1965) maximum-likelihood b, above the feed's own completeness
-    mc = 2.5
-    above = [m for m in mags if m >= mc]
-    if len(above) >= 20:
-        mean = sum(above) / len(above)
-        b = math.log10(math.e) / max(1e-6, mean - (mc - 0.05))
-        bval = f"b = {b:.2f}"
+    # The b-value comes off the 30-day feed: a single day carries a few dozen
+    # events, which is not a sample you can fit a slope to.
+    try:
+        month = _mags(_get(FEED_MONTH))
+    except Exception:                                  # noqa: BLE001
+        month = []
+    b, mc, n = b_value(month)
+    if b is not None:
+        bval = f"b = {b:.2f} · Mc {mc:.1f} · 30 d"
     else:
-        bval = f"n = {len(above)}"
+        bval = f"n = {n} · 30 d"
 
     return {
         "events": events or {58: 1.0},
         "bars": bars,
         "b": bval,
-        "stamp": (f"M 2.5+ · {len(mags)} EVENTS · "
+        "stamp": (f"M 2.5+ · {len(feats)} EVENTS · 24 H · "
                   f"{now.strftime('%Y-%m-%d %H:%MZ')} · USGS"),
     }
 
