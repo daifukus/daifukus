@@ -67,7 +67,7 @@ Static HTML on Vercel. No framework, no build step, push to deploy.
 </tr>
 <tr>
 <td><b>The panel above is the real catalogue</b></td>
-<td>Quake's trace is not drawn from taste. <code>.github/workflows/refresh-quake.yml</code> pulls the USGS feed every six hours, fits a b-value over it with Aki's estimator, redraws the panel and commits only when the numbers moved. If the feed is down the last snapshot stands.</td>
+<td>Quake's trace is not drawn from taste. <code>.github/workflows/refresh-quake.yml</code> pulls two USGS feeds every six hours: the day feed draws the trace and the per-2 h bars, and the 30-day feed carries the b-value — fitted by Aki's estimator above an Mc found by maximum curvature, over the US box, because that is the only region the M2.5+ feed is complete across. A fit outside 0.6–1.6 is refused and the count shown instead. The panel names all of it. If a feed is down the last snapshot stands.</td>
 </tr>
 </table>
 
