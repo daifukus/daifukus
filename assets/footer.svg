@@ -1,6 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 112"
-     width="1240" height="112" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 116"
+     width="1240" height="116" role="img"
      aria-label="Engineered in Silence. © 2026 DFK Labs.">
   <title>Engineered in Silence</title>
-  <rect width="1240" height="112" fill="#050505"/><line x1="0" y1="0" x2="1240" y2="0" stroke="rgba(255,255,255,0.1)" stroke-width="1"/><rect x="32" y="38" width="58" height="3" fill="#F59E1B" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="0.00s" repeatCount="indefinite"/></rect><text x="32" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">RISU</text><rect x="104" y="38" width="58" height="3" fill="#D9B45B" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="0.40s" repeatCount="indefinite"/></rect><text x="104" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">BIRDIO</text><rect x="176" y="38" width="58" height="3" fill="#4E86F0" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="0.80s" repeatCount="indefinite"/></rect><text x="176" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">MULE</text><rect x="248" y="38" width="58" height="3" fill="#E8A33D" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="1.20s" repeatCount="indefinite"/></rect><text x="248" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">QUAKE</text><rect x="320" y="38" width="58" height="3" fill="#3FE0C5" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="1.60s" repeatCount="indefinite"/></rect><text x="320" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">STUDIO</text><rect x="392" y="38" width="58" height="3" fill="#FCEE0A" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="2.00s" repeatCount="indefinite"/></rect><text x="392" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">PANELTIR</text><rect x="464" y="38" width="58" height="3" fill="#10b981" opacity="0.22"><animate attributeName="opacity" values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" dur="6.3s" begin="2.40s" repeatCount="indefinite"/></rect><text x="464" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">VIBECLAUDE</text><text x="1208" y="44" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="#ffffff" letter-spacing="2.4" text-anchor="end">ENGINEERED IN SILENCE.</text><text x="1208" y="62" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="#6b7280" letter-spacing="1.2" text-anchor="end">© 2026 DFK Labs</text>
+  <style>
+  .rise,.pop,.wipe,.grow,.draw{animation-fill-mode:both}
+  .rise{opacity:0;animation:rise .62s cubic-bezier(.16,1,.3,1) forwards}
+  .pop{opacity:0;transform-box:fill-box;transform-origin:center;
+       animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+  .wipe{transform-box:fill-box;transform-origin:left center;
+        animation:wipe .9s cubic-bezier(.16,1,.3,1) forwards}
+  .grow{transform-box:fill-box;transform-origin:bottom center;
+        animation:grow .55s cubic-bezier(.16,1,.3,1) forwards}
+  .draw{animation:draw 1.8s cubic-bezier(.16,1,.3,1) forwards}
+  .beat{transform-box:fill-box;transform-origin:center;
+        animation:beat 2.4s ease-in-out infinite}
+  .halo{transform-box:fill-box;transform-origin:center;
+        animation:halo 2.4s ease-out infinite}
+  .sheen{animation:sheen 9s cubic-bezier(.5,0,.2,1) 1.6s infinite}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}
+                  to{opacity:1;transform:none}}
+  @keyframes pop{0%{opacity:0;transform:scale(.82)}
+                 62%{opacity:1;transform:scale(1.05)}
+                 100%{opacity:1;transform:scale(1)}}
+  @keyframes wipe{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.28}}
+  @keyframes halo{0%{transform:scale(1);opacity:.55}
+                  70%,100%{transform:scale(2.7);opacity:0}}
+  @keyframes sheen{0%{transform:translateX(-38%)}
+                   34%,100%{transform:translateX(150%)}}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;opacity:1!important;transform:none!important;
+      stroke-dashoffset:0!important}
+  }
+
+  .tick{opacity:.22;animation:tick 6.3s ease-in-out infinite}
+  @keyframes tick{0%,8%{opacity:.22}14%{opacity:1}24%,100%{opacity:.22}}</style>
+  <rect width="1240" height="116" fill="#050505"/><line x1="0" y1="0" x2="1240" y2="0" stroke="rgba(255,255,255,0.1)" stroke-width="1"/><rect x="32" y="40" width="58" height="3" fill="#F59E1B" class="tick" style="animation-delay:0.00s"/><text x="32" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">RISU</text><rect x="104" y="40" width="58" height="3" fill="#D9B45B" class="tick" style="animation-delay:0.42s"/><text x="104" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">BIRDIO</text><rect x="176" y="40" width="58" height="3" fill="#4E86F0" class="tick" style="animation-delay:0.84s"/><text x="176" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">MULE</text><rect x="248" y="40" width="58" height="3" fill="#E8A33D" class="tick" style="animation-delay:1.26s"/><text x="248" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">QUAKE</text><rect x="320" y="40" width="58" height="3" fill="#3FE0C5" class="tick" style="animation-delay:1.68s"/><text x="320" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">STUDIO</text><rect x="392" y="40" width="58" height="3" fill="#FCEE0A" class="tick" style="animation-delay:2.10s"/><text x="392" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">PANELTIR</text><rect x="464" y="40" width="58" height="3" fill="#10b981" class="tick" style="animation-delay:2.52s"/><text x="464" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="8.5" fill="#6b7280" letter-spacing="1.2">VIBECLAUDE</text><text x="1208" y="46" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="#ffffff" letter-spacing="2.4" text-anchor="end">ENGINEERED IN SILENCE.</text><text x="1208" y="64" font-family="'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="#6b7280" letter-spacing="1.2" text-anchor="end">© 2026 DFK Labs</text>
 </svg>
