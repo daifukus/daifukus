@@ -808,9 +808,28 @@ def _get(url):
         return json.load(r)
 
 
-def _mags(doc):
-    return [f["properties"]["mag"] for f in doc.get("features", [])
-            if (f.get("properties") or {}).get("mag") is not None]
+# The conterminous United States, where the USGS network actually resolves
+# down to M2.5. Outside it the same feed is complete somewhere above M4, and a
+# fit over both at once is a fit over a mixture of two catalogues.
+US_BOX = (24.0, 50.0, -125.0, -65.0)          # lat min/max, lon min/max
+B_PLAUSIBLE = (0.6, 1.6)                       # anything outside is not shown
+
+
+def _mags(doc, box=None):
+    out = []
+    for f in doc.get("features", []):
+        p = f.get("properties") or {}
+        if p.get("mag") is None:
+            continue
+        if box is not None:
+            c = ((f.get("geometry") or {}).get("coordinates") or [None, None])
+            lon, lat = c[0], c[1]
+            if lon is None or lat is None:
+                continue
+            if not (box[0] <= lat <= box[1] and box[2] <= lon <= box[3]):
+                continue
+        out.append(p["mag"])
+    return out
 
 
 def completeness(mags):
@@ -844,7 +863,12 @@ def b_value(mags):
     denom = mean - (mc - 0.05)
     if denom <= 0.05:
         return None, mc, len(above)
-    return math.log10(math.e) / denom, mc, len(above)
+    b = math.log10(math.e) / denom
+    # A fit outside the range every regional catalogue on record falls in is a
+    # broken fit, not a discovery. Show the count instead of publishing it.
+    if not (B_PLAUSIBLE[0] <= b <= B_PLAUSIBLE[1]):
+        return None, mc, len(above)
+    return b, mc, len(above)
 
 
 def fetch_quake():
@@ -883,14 +907,14 @@ def fetch_quake():
     # The b-value comes off the 30-day feed: a single day carries a few dozen
     # events, which is not a sample you can fit a slope to.
     try:
-        month = _mags(_get(FEED_MONTH))
+        month = _mags(_get(FEED_MONTH), box=US_BOX)
     except Exception:                                  # noqa: BLE001
         month = []
     b, mc, n = b_value(month)
     if b is not None:
-        bval = f"b = {b:.2f} · Mc {mc:.1f} · 30 d"
+        bval = f"b = {b:.2f} · Mc {mc:.1f} · US 30 d"
     else:
-        bval = f"n = {n} · 30 d"
+        bval = f"n = {n} · US 30 d"
 
     return {
         "events": events or {58: 1.0},
