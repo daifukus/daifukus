@@ -1,35 +1,56 @@
 #!/usr/bin/env python3
 """Renders every panel in the profile README.
 
-    python3 assets/build.py
+    python3 assets/build.py            # from the committed snapshot
+    python3 assets/build.py --live     # refresh Quake from the USGS feed first
 
-One frame, one palette per product — the same rule dfklabs.com's cards follow,
-where each `.<slug>-card` is described in the source as "DFK frame · <product>
-DNA". The frame is constant: #0f0f0f block, a 10% white hairline, square
-corners, a 2px top rule in the product's accent. Only the accent, the far end
-of the gradient and the instrument at the bottom change.
+One frame, one palette per product — the rule dfklabs.com's own cards follow,
+where each `.<slug>-card` is commented "DFK frame · <product> DNA". The frame
+is constant: #0f0f0f block, a 10% white hairline, square corners, a 2px top
+rule in the product's accent. Only the mark, the accent, the far end of the
+gradient and the instrument change.
 
-Colours are not invented here. They are read off the portal's own stylesheet
-(`daifukus/DFK`, index.html) and `daifukus/Studio`'s `src/site.json`:
+Nothing here is invented. Colours, marks and wording are read off the portal's
+own source (`daifukus/DFK`, index.html) and `daifukus/Studio`'s src/site.json:
 
-    --accent        #2563eb   Engineering Blue, the portal's own accent
+    --accent        #2563eb   Engineering Blue, the portal's accent
     --accent-green  #10b981   Terminal Green
     --bg-core       #050505   --block-solid #0f0f0f
     --border-line   rgba(255,255,255,.1)
     --text-main     #ffffff   --text-mute #6b7280
 
-One deliberate departure: `--text-mute` (#6b7280) measures 3.96:1 on #0f0f0f
-and fails WCAG AA, which Studio's own contrast check already caught. Body copy
-here uses #8b94a2 — the value Studio moved to, two steps up the same ramp.
-#6b7280 is kept for micro-labels that carry no information on their own.
+    .dfk-logo       2px white border, 800 weight, -1px tracking,
+                    3px 3px hard shadow in --accent
+    Risu, Birdio    the app icons, lifted from the portal as assets/logo-*.jpg
+    Quake, Studio   the portal's own path glyphs, vector
+    Mule            "M" over linear-gradient(140deg,#4E86F0,#1247B8)
+    VibeClaude      the GitHub mark, as the portal's tool card shows it
 
-Animation is SMIL, not CSS. GitHub serves these through camo and the browser
-paints them as <img>, where SMIL is the half that reliably runs.
+Paneltir is the one mark drawn here rather than copied: it is not on the
+portal, so its glyph is a board, in its own Night City yellow.
+
+One deliberate departure: `--text-mute` (#6b7280) measures 3.96:1 on #0f0f0f
+and fails AA — Studio's own contrast check already caught it — so body copy
+uses #8b94a2, the value Studio moved to. #6b7280 stays on micro-labels that
+carry no information alone.
+
+Animation is CSS, not SMIL. SMIL cannot be switched off by a viewer who asks
+for less motion; a CSS keyframe can, and the reduced-motion block at the top
+of every file resolves each panel to its finished frame. Transforms and
+opacity only, so the compositor does the work.
 
 The output is committed, so the profile has no build step.
 """
 
+import argparse
+import base64
+import json
+import math
+import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
 
 # ── The frame ────────────────────────────────────────────────────────────────
 
@@ -48,13 +69,27 @@ MONO = "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 SANS = "'Inter',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
 # Fredoka is the portal's wordmark face for the three iOS apps. A webfont
 # cannot load inside an SVG served through camo, so the stack degrades to the
-# system sans and the identity is carried by weight and tracking instead —
-# which is what the portal's own .risu-wordmark rule does anyway.
+# system sans and weight plus tracking carry the identity instead — which is
+# what .risu-wordmark leans on anyway.
 ROUND = "'Fredoka'," + SANS
 
-CARD_W, CARD_H = 604, 424
-WIDE_W, WIDE_H = 1240, 380
+CARD_W, CARD_H = 604, 436
+WIDE_W, WIDE_H = 1240, 392
 PAD = 26
+
+GITHUB_MARK = (
+    "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111"
+    ".793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387"
+    "-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839"
+    " 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305"
+    ".762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236"
+    "-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957"
+    "-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552"
+    " 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911"
+    " 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222"
+    "v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0"
+    "-6.627-5.373-12-12-12z"
+)
 
 
 # ── The products, as the portal names them ───────────────────────────────────
@@ -62,7 +97,8 @@ PAD = 26
 PRODUCTS = [
     dict(
         slug="risu", mark="RISU", face=ROUND, tag="SMART DOCUMENTS",
-        platform="iOS", status="SOON", accent="#F59E1B", deep="#1E1408",
+        platform="iOS", state="SOON", accent="#F59E1B", deep="#1E1408",
+        logo=("raster", "logo-risu.jpg"),
         blurb=["The documents that expire — passport, ID, licence,",
                "insurance. The dates are read off the photo, and the",
                "alert lands early enough that renewing is still easy."],
@@ -71,7 +107,8 @@ PRODUCTS = [
     ),
     dict(
         slug="birdio", mark="BIRDIO", face=ROUND, tag="GOLF & MINIGOLF",
-        platform="iOS", status="SOON", accent="#D9B45B", deep="#0A1B12",
+        platform="iOS", state="SOON", accent="#D9B45B", deep="#0A1B12",
+        logo=("raster", "logo-birdio.jpg"),
         blurb=["Every round, remembered. A WHS-style index from your",
                "best 8 of the last 20 — and the one statistic that",
                "names where the strokes are actually going."],
@@ -80,8 +117,9 @@ PRODUCTS = [
     ),
     dict(
         slug="mule", mark="MULE", face=ROUND, tag="STRENGTH TRAINING",
-        platform="iOS · watchOS", status="SOON", accent="#4E86F0",
+        platform="iOS · watchOS", state="SOON", accent="#4E86F0",
         deep="#071A3F",
+        logo=("letter", "M", "#4E86F0", "#1247B8"),
         blurb=["Every rep, remembered. Each session scored against your",
                "own baseline, and a coach that cites the study behind",
                "every recommendation — so you can check it."],
@@ -90,7 +128,9 @@ PRODUCTS = [
     ),
     dict(
         slug="quake", mark="QUAKE", face=MONO, tag="SEISMIC MONITOR",
-        platform="WEB · PWA", status="LIVE", accent="#E8A33D", deep="#1A1408",
+        platform="WEB · PWA", state="LIVE", accent="#E8A33D", deep="#1A1408",
+        # the portal's own glyph: a trace, on the amber tile
+        logo=("glyph", "M12 50h16l8-30 14 56 12-34 8 8h18", "#1A1408", 11),
         blurb=["Live USGS and EMSC catalogues, alerts only for the places",
                "you pick, and aftershock outlooks stated as statistics.",
                "Every card names what it rests on. Never a prediction."],
@@ -99,7 +139,8 @@ PRODUCTS = [
     ),
     dict(
         slug="studio", mark="STUDIO", face=MONO, tag="BROWSER TOOLS",
-        platform="WEB", status="LIVE", accent="#3FE0C5", deep="#062A24",
+        platform="WEB", state="LIVE", accent="#3FE0C5", deep="#062A24",
+        logo=("glyph", "M30 34h40M30 50h40M30 66h24", "#062A24", 11),
         blurb=["Thirty-odd converters, encoders and image tools. Load one,",
                "switch the network off, and it keeps working — which is",
                "the only proof of “nothing is uploaded” worth anything."],
@@ -108,7 +149,8 @@ PRODUCTS = [
     ),
     dict(
         slug="paneltir", mark="PANELTIR", face=MONO, tag="UI KIT",
-        platform="REACT · TS", status="LIVE", accent="#FCEE0A", deep="#1A0711",
+        platform="REACT · TS", state="LIVE", accent="#FCEE0A", deep="#1A0711",
+        logo=("glyph", "M26 28v44M50 28v30M74 28v38", "#1A0711", 11),
         blurb=["The admin-panel kit behind every DFK board. It owns",
                "structure and behaviour and never colour: each project",
                "hands it a palette, and that is the whole customisation."],
@@ -118,8 +160,9 @@ PRODUCTS = [
 ]
 
 OPEN_SOURCE = dict(
-    slug="vibeclaude", mark="VIBECLAUDE", face=MONO, tag="XCODE MONITOR",
-    platform="OPEN SOURCE", status="PUBLIC", accent=GREEN, deep="#04140E",
+    slug="vibeclaude", mark="VIBECLAUDE", face=MONO, tag="CLI TOOL",
+    platform="macOS", state="PUBLIC", accent=GREEN, deep="#04140E",
+    logo=("github",),
     blurb=["Watch what Claude is doing inside Xcode. The only surface here",
            "you can clone, read and run for yourself."],
     chips=["Swift", "Xcode", "MIT"],
@@ -131,8 +174,8 @@ OPEN_SOURCE = dict(
 
 def rgba(hex_color, alpha):
     h = hex_color.lstrip("#")
-    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
-    return f"rgba({r},{g},{b},{alpha})"
+    r, g_, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g_},{b},{alpha})"
 
 
 def esc(s):
@@ -140,8 +183,8 @@ def esc(s):
              .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def text(x, y, s, *, face=SANS, size=13, fill=BODY, weight=None,
-         track=None, anchor=None, extra=""):
+def text(x, y, s, *, face=SANS, size=13, fill=BODY, weight=None, track=None,
+         anchor=None, cls=None, delay=None):
     a = [f'x="{x}"', f'y="{y}"', f'font-family="{face}"', f'font-size="{size}"',
          f'fill="{fill}"']
     if weight:
@@ -150,108 +193,210 @@ def text(x, y, s, *, face=SANS, size=13, fill=BODY, weight=None,
         a.append(f'letter-spacing="{track}"')
     if anchor:
         a.append(f'text-anchor="{anchor}"')
-    return f'<text {" ".join(a)}>{esc(s)}{extra}</text>'
+    if cls:
+        a.append(f'class="{cls}"')
+    if delay is not None:
+        a.append(f'style="animation-delay:{delay}s"')
+    return f'<text {" ".join(a)}>{esc(s)}</text>'
 
 
-def pill(x, y, label, accent, *, w=None, filled=True):
-    """The portal's .<slug>-chip: 8% ground, 20% border, accent ink."""
-    w = w if w else 15 + len(label) * 6.4
-    bg = f'fill="{rgba(accent, 0.08)}"' if filled else 'fill="none"'
-    return (
-        f'<g><rect x="{x}" y="{y}" width="{w:.0f}" height="20" rx="10" {bg} '
-        f'stroke="{rgba(accent, 0.2)}"/>'
+def grp(body, *, cls=None, delay=None):
+    a = []
+    if cls:
+        a.append(f'class="{cls}"')
+    if delay is not None:
+        a.append(f'style="animation-delay:{delay}s"')
+    return f'<g {" ".join(a)}>{body}</g>'
+
+
+# ── The animation layer ──────────────────────────────────────────────────────
+# Transforms and opacity only. Every keyframe ends on the finished frame, so
+# the reduced-motion block can switch the animations off and leave the panel
+# readable — which is also what a still thumbnail gets.
+
+BASE_CSS = """
+  .rise,.pop,.wipe,.grow,.draw{animation-fill-mode:both}
+  .rise{opacity:0;animation:rise .62s cubic-bezier(.16,1,.3,1) forwards}
+  .pop{opacity:0;transform-box:fill-box;transform-origin:center;
+       animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+  .wipe{transform-box:fill-box;transform-origin:left center;
+        animation:wipe .9s cubic-bezier(.16,1,.3,1) forwards}
+  .grow{transform-box:fill-box;transform-origin:bottom center;
+        animation:grow .55s cubic-bezier(.16,1,.3,1) forwards}
+  .draw{animation:draw 1.8s cubic-bezier(.16,1,.3,1) forwards}
+  .beat{transform-box:fill-box;transform-origin:center;
+        animation:beat 2.4s ease-in-out infinite}
+  .halo{transform-box:fill-box;transform-origin:center;
+        animation:halo 2.4s ease-out infinite}
+  .sheen{animation:sheen 9s cubic-bezier(.5,0,.2,1) 1.6s infinite}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}
+                  to{opacity:1;transform:none}}
+  @keyframes pop{0%{opacity:0;transform:scale(.82)}
+                 62%{opacity:1;transform:scale(1.05)}
+                 100%{opacity:1;transform:scale(1)}}
+  @keyframes wipe{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.28}}
+  @keyframes halo{0%{transform:scale(1);opacity:.55}
+                  70%,100%{transform:scale(2.7);opacity:0}}
+  @keyframes sheen{0%{transform:translateX(-38%)}
+                   34%,100%{transform:translateX(150%)}}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;opacity:1!important;transform:none!important;
+      stroke-dashoffset:0!important}
+  }
+"""
+
+
+def stylesheet(extra=""):
+    return f"<style>{BASE_CSS}{extra}</style>"
+
+
+# ── The marks ────────────────────────────────────────────────────────────────
+
+def logo(spec, x, y, size, accent, *, delay=0.3):
+    """The product's own mark, on its own tile, at the portal's proportions."""
+    kind = spec[0]
+    tile = f'<rect x="{x}" y="{y}" width="{size}" height="{size}" rx="9" '
+
+    if kind == "raster":
+        data = base64.b64encode((HERE / spec[1]).read_bytes()).decode()
+        cid = "clip-" + spec[1].replace(".", "-")
+        return grp(
+            f'<clipPath id="{cid}"><rect x="{x}" y="{y}" width="{size}" '
+            f'height="{size}" rx="9"/></clipPath>'
+            f'<image x="{x}" y="{y}" width="{size}" height="{size}" '
+            f'clip-path="url(#{cid})" preserveAspectRatio="xMidYMid slice" '
+            f'href="data:image/jpeg;base64,{data}"/>'
+            + tile + f'fill="none" stroke="{rgba("#ffffff", 0.14)}"/>',
+            cls="pop", delay=delay)
+
+    if kind == "letter":
+        _, ch, c1, c2 = spec
+        gid = f"lg-{ch.lower()}"
+        return grp(
+            f'<defs><linearGradient id="{gid}" x1="0" y1="0" x2="0.75" y2="1">'
+            f'<stop offset="0%" stop-color="{c1}"/>'
+            f'<stop offset="100%" stop-color="{c2}"/></linearGradient></defs>'
+            + tile + f'fill="url(#{gid})"/>'
+            + text(x + size / 2, y + size * 0.71, ch, face=ROUND,
+                   size=size * 0.52, fill="#ffffff", weight="600",
+                   anchor="middle"),
+            cls="pop", delay=delay)
+
+    if kind == "glyph":
+        _, d, ink, sw = spec
+        s = size / 100
+        return grp(
+            tile + f'fill="{accent}"/>'
+            + f'<g transform="translate({x + size * 0.18},{y + size * 0.18}) '
+              f'scale({s * 0.64})"><path d="{d}" fill="none" stroke="{ink}" '
+              f'stroke-width="{sw}" stroke-linecap="round" '
+              f'stroke-linejoin="round"/></g>',
+            cls="pop", delay=delay)
+
+    # the GitHub mark, as the portal's tool card shows it
+    s = size / 24
+    return grp(
+        tile + f'fill="{rgba(accent, 0.12)}" stroke="{rgba(accent, 0.3)}"/>'
+        + f'<g transform="translate({x + size * 0.2},{y + size * 0.2}) '
+          f'scale({s * 0.6})"><path d="{GITHUB_MARK}" fill="{accent}"/></g>',
+        cls="pop", delay=delay)
+
+
+def dfk_mark(x, y, scale=1.0):
+    """.dfk-logo: 2px white border, 800 weight, a 3px hard shadow in --accent."""
+    w, h = 54 * scale, 30 * scale
+    return grp(
+        f'<rect x="{x + 3 * scale}" y="{y + 3 * scale}" width="{w}" '
+        f'height="{h}" fill="{BLUE}"/>'
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{BG}" '
+        f'stroke="{INK}" stroke-width="{2 * scale}"/>'
+        + text(x + w / 2, y + h * 0.72, "DFK", face=MONO, size=17 * scale,
+               fill=INK, weight="800", track=-1, anchor="middle"),
+        cls="rise", delay=0.1)
+
+
+# ── Card furniture ───────────────────────────────────────────────────────────
+
+def pill(x, y, label, accent, delay):
+    w = 15 + len(label) * 6.4
+    return grp(
+        f'<rect x="{x}" y="{y}" width="{w:.0f}" height="20" rx="10" '
+        f'fill="{rgba(accent, 0.08)}" stroke="{rgba(accent, 0.2)}"/>'
         + text(x + w / 2, y + 13.5, label, face=SANS, size=10, fill=accent,
-               anchor="middle")
-        + "</g>"
-    ), w
+               anchor="middle"),
+        cls="pop", delay=delay), w
 
 
-def tag_box(x, y, label, accent):
-    """The portal's .<slug>-tag: square, accent ink, 25% border."""
+def tag_box(x, y, label, accent, delay):
     w = 16 + len(label) * 6.3
-    return (
-        f'<g><rect x="{x}" y="{y}" width="{w:.0f}" height="20" fill="none" '
+    return grp(
+        f'<rect x="{x}" y="{y}" width="{w:.0f}" height="20" fill="none" '
         f'stroke="{rgba(accent, 0.25)}"/>'
         + text(x + w / 2, y + 13.5, label, face=MONO, size=9.5, fill=accent,
-               anchor="middle", track=0.6)
-        + "</g>"
-    ), w
+               anchor="middle", track=0.6),
+        cls="rise", delay=delay), w
 
 
-def status(x, y, label, accent, *, delay=1.2):
-    """Status dot + word, the pulse the portal puts on every card."""
-    return (
-        f'<g>'
-        f'<circle cx="{x}" cy="{y}" r="3.5" fill="{accent}">'
-        f'<animate attributeName="opacity" values="1;0.25;1" dur="2.2s" '
-        f'begin="{delay}s" repeatCount="indefinite"/></circle>'
+def state_dot(x, y, label, accent, delay):
+    return grp(
+        f'<circle cx="{x}" cy="{y}" r="3.5" fill="{accent}" class="beat"/>'
         f'<circle cx="{x}" cy="{y}" r="3.5" fill="none" stroke="{accent}" '
-        f'stroke-width="1.2"><animate attributeName="r" values="3.5;11" '
-        f'dur="2.2s" begin="{delay}s" repeatCount="indefinite"/>'
-        f'<animate attributeName="opacity" values="0.6;0" dur="2.2s" '
-        f'begin="{delay}s" repeatCount="indefinite"/></circle>'
-        + text(x + 11, y + 4, label, face=MONO, size=10, fill=accent, track=1.4)
-        + "</g>"
-    )
+        f'stroke-width="1.2" class="halo"/>'
+        + text(x + 16, y + 4, label, face=MONO, size=10, fill=accent,
+               track=1.4),
+        cls="rise", delay=delay)
 
 
-def dashline(x, y, w, color=LINE):
+def rule(x, y, w, color=LINE):
     return (f'<line x1="{x}" y1="{y}" x2="{x + w}" y2="{y}" stroke="{color}" '
             f'stroke-width="1"/>')
 
 
-def draw(d, color, *, width=1.6, dash=None, dur="1.4s", begin="0.5s",
-         fill="none", opacity=1, cap="round"):
-    """A path that draws itself once, then stays."""
-    if dash is None:
-        return (f'<path d="{d}" fill="{fill}" stroke="{color}" '
-                f'stroke-width="{width}" stroke-linecap="{cap}" '
-                f'opacity="{opacity}"/>')
-    return (
-        f'<path d="{d}" fill="{fill}" stroke="{color}" stroke-width="{width}" '
-        f'stroke-linecap="{cap}" stroke-linejoin="round" opacity="{opacity}" '
-        f'stroke-dasharray="{dash}" stroke-dashoffset="{dash}">'
-        f'<animate attributeName="stroke-dashoffset" values="{dash};0" '
-        f'dur="{dur}" begin="{begin}" fill="freeze" calcMode="spline" '
-        f'keyTimes="0;1" keySplines="0.16 1 0.3 1"/></path>'
-    )
+def path_draw(d, color, length, *, width=1.6, delay=0.7, dur=1.8, opacity=1):
+    return (f'<path d="{d}" fill="none" stroke="{color}" '
+            f'stroke-width="{width}" stroke-linecap="round" '
+            f'stroke-linejoin="round" opacity="{opacity}" class="draw" '
+            f'stroke-dasharray="{length}" stroke-dashoffset="{length}" '
+            f'style="animation-delay:{delay}s;animation-duration:{dur}s"/>')
 
 
 # ── The instruments ──────────────────────────────────────────────────────────
-# One per product, drawn from that product's own subject matter. Each gets the
-# strip between y and y+86, inset by PAD.
 
 def inst_expiry(x, y, w, a):
     """Risu: a document, its expiry ring closing, the date read off it."""
-    out = [f'<rect x="{x}" y="{y}" width="66" height="84" rx="3" '
-           f'fill="{rgba(a, 0.07)}" stroke="{rgba(a, 0.22)}"/>']
+    o = [f'<rect x="{x}" y="{y}" width="66" height="84" rx="3" '
+         f'fill="{rgba(a, 0.07)}" stroke="{rgba(a, 0.22)}"/>']
     for i, ln in enumerate((30, 44, 22, 38)):
-        out.append(f'<rect x="{x + 10}" y="{y + 16 + i * 12}" width="{ln}" '
-                   f'height="3" rx="1.5" fill="{rgba(a, 0.35)}">'
-                   f'<animate attributeName="width" values="0;{ln}" dur="0.5s" '
-                   f'begin="{0.8 + i * 0.16:.2f}s" fill="freeze"/></rect>')
+        o.append(f'<rect x="{x + 10}" y="{y + 16 + i * 12}" width="{ln}" '
+                 f'height="3" rx="1.5" fill="{rgba(a, 0.35)}" class="wipe" '
+                 f'style="animation-delay:{0.9 + i * 0.13:.2f}s;'
+                 f'animation-duration:.45s"/>')
     cx, cy, r = x + 132, y + 42, 30
-    circ = 2 * 3.14159 * r
-    out.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" '
-               f'stroke="{rgba(a, 0.14)}" stroke-width="5"/>')
-    out.append(
-        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{a}" '
-        f'stroke-width="5" stroke-linecap="round" stroke-dasharray="{circ:.0f}" '
-        f'stroke-dashoffset="{circ:.0f}" transform="rotate(-90 {cx} {cy})">'
-        f'<animate attributeName="stroke-dashoffset" '
-        f'values="{circ:.0f};{circ * 0.22:.0f}" dur="1.6s" begin="1.1s" '
-        f'fill="freeze" calcMode="spline" keyTimes="0;1" '
-        f'keySplines="0.16 1 0.3 1"/></circle>')
-    out.append(text(cx, cy + 4, "78d", face=MONO, size=15, fill=a,
-                    weight="700", anchor="middle"))
+    circ = 2 * math.pi * r
+    o.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" '
+             f'stroke="{rgba(a, 0.14)}" stroke-width="5"/>')
+    o.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{a}" '
+             f'stroke-width="5" stroke-linecap="round" class="draw" '
+             f'stroke-dasharray="{circ:.0f}" '
+             f'stroke-dashoffset="{circ * 0.22:.0f}" '
+             f'transform="rotate(-90 {cx} {cy})" '
+             f'style="animation-name:ring;animation-delay:1.2s;'
+             f'animation-duration:1.5s"/>')
+    o.append(text(cx, cy + 5, "78d", face=MONO, size=15, fill=a, weight="700",
+                  anchor="middle", cls="rise", delay=2.2))
     lx = x + 186
-    out.append(text(lx, y + 26, "EXPIRES", face=MONO, size=9, fill=MUTE,
-                    track=1.6))
-    out.append(text(lx, y + 46, "2027-01-14", face=MONO, size=15, fill=INK,
-                    weight="700"))
-    out.append(text(lx, y + 68, "read from the photo", face=SANS, size=11,
-                    fill=MUTE))
-    return "".join(out)
+    o.append(text(lx, y + 26, "EXPIRES", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.5))
+    o.append(text(lx, y + 46, "2027-01-14", face=MONO, size=15, fill=INK,
+                  weight="700", cls="rise", delay=1.65))
+    o.append(text(lx, y + 68, "read from the photo", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.8))
+    css = (f"\n  @keyframes ring{{from{{stroke-dashoffset:{circ:.0f}}}"
+           f"to{{stroke-dashoffset:{circ * 0.22:.0f}}}}}")
+    return "".join(o), css
 
 
 def inst_handicap(x, y, w, a):
@@ -259,170 +404,199 @@ def inst_handicap(x, y, w, a):
     pts = [(0, 12), (46, 26), (92, 20), (138, 40), (184, 34),
            (230, 52), (276, 47), (322, 64), (368, 72)]
     d = "M " + " L ".join(f"{x + px} {y + py}" for px, py in pts)
-    out = [f'<rect x="{x}" y="{y + 4}" width="374" height="74" fill="none" '
-           f'stroke="{HAIR}"/>']
+    o = [f'<rect x="{x}" y="{y + 4}" width="374" height="74" fill="none" '
+         f'stroke="{HAIR}"/>']
     for gy in (22, 44, 66):
-        out.append(dashline(x, y + gy, 374, HAIR))
-    out.append(draw(d, a, width=2, dash=560, dur="2s", begin="0.7s"))
-    last = pts[-1]
-    out.append(f'<circle cx="{x + last[0]}" cy="{y + last[1]}" r="4" '
-               f'fill="{a}" opacity="0"><animate attributeName="opacity" '
-               f'values="0;1" dur="0.3s" begin="2.5s" fill="freeze"/></circle>')
-    out.append(text(x, y - 2, "INDEX 24.1 → 11.6", face=MONO, size=9,
-                    fill=MUTE, track=1.4))
+        o.append(rule(x, y + gy, 374, HAIR))
+    area = d + f" L {x + 368} {y + 78} L {x} {y + 78} Z"
+    o.append(f'<path d="{area}" fill="{rgba(a, 0.09)}" class="rise" '
+             f'style="animation-delay:1.9s"/>')
+    o.append(path_draw(d, a, 560, width=2, delay=0.8, dur=2.0))
+    ex_, ey_ = x + pts[-1][0], y + pts[-1][1]
+    o.append(f'<circle cx="{ex_}" cy="{ey_}" r="4" fill="{a}" class="pop" '
+             f'style="animation-delay:2.5s"/>')
+    o.append(f'<circle cx="{ex_}" cy="{ey_}" r="4" fill="none" stroke="{a}" '
+             f'class="halo" style="animation-delay:2.9s"/>')
+    o.append(text(x, y - 2, "INDEX 24.1 → 11.6", face=MONO, size=9, fill=MUTE,
+                  track=1.4, cls="rise", delay=0.6))
     lx = x + 396
     for i, (name, on) in enumerate((("CONDOR", 0), ("EAGLE", 1),
                                     ("OWL", 0), ("FLAMINGO", 0))):
         c = a if on else rgba(a, 0.28)
-        out.append(f'<rect x="{lx}" y="{y + 6 + i * 19}" width="7" height="7" '
-                   f'fill="{c}"/>')
-        out.append(text(lx + 15, y + 13 + i * 19, name, face=MONO, size=9,
-                        fill=INK if on else MUTE, track=1.2))
-    return "".join(out)
+        o.append(grp(f'<rect x="{lx}" y="{y + 6 + i * 19}" width="7" '
+                     f'height="7" fill="{c}"/>'
+                     + text(lx + 15, y + 13 + i * 19, name, face=MONO, size=9,
+                            fill=INK if on else MUTE, track=1.2),
+                     cls="rise", delay=1.9 + i * 0.09))
+    return "".join(o), ""
 
 
 def inst_sets(x, y, w, a):
     """Mule: the session, bar by bar, against the baseline it is scored on."""
-    out = []
+    o = []
     bars = [30, 44, 38, 56, 62, 50, 71, 66, 78, 58, 84, 74]
     base = 52
-    out.append(f'<line x1="{x}" y1="{y + 84 - base}" x2="{x + 300}" '
-               f'y2="{y + 84 - base}" stroke="{rgba(a, 0.45)}" '
-               f'stroke-dasharray="3 3"/>')
-    out.append(text(x + 306, y + 88 - base, "BASELINE", face=MONO, size=8.5,
-                    fill=MUTE, track=1.2))
-    for i, h in enumerate(bars):
-        bx = x + i * 25
-        col = a if h >= base else rgba(a, 0.4)
-        out.append(f'<rect x="{bx}" y="{y + 84}" width="14" height="0" '
-                   f'fill="{col}"><animate attributeName="height" '
-                   f'values="0;{h}" dur="0.5s" begin="{0.6 + i * 0.07:.2f}s" '
-                   f'fill="freeze" calcMode="spline" keyTimes="0;1" '
-                   f'keySplines="0.16 1 0.3 1"/>'
-                   f'<animate attributeName="y" values="{y + 84};{y + 84 - h}" '
-                   f'dur="0.5s" begin="{0.6 + i * 0.07:.2f}s" fill="freeze" '
-                   f'calcMode="spline" keyTimes="0;1" '
-                   f'keySplines="0.16 1 0.3 1"/></rect>')
+    o.append(f'<line x1="{x}" y1="{y + 84 - base}" x2="{x + 300}" '
+             f'y2="{y + 84 - base}" stroke="{rgba(a, 0.45)}" '
+             f'stroke-dasharray="3 3" class="wipe" '
+             f'style="animation-delay:.6s"/>')
+    o.append(text(x + 306, y + 88 - base, "BASELINE", face=MONO, size=8.5,
+                  fill=MUTE, track=1.2, cls="rise", delay=1.5))
+    for i, hh in enumerate(bars):
+        col = a if hh >= base else rgba(a, 0.4)
+        o.append(f'<rect x="{x + i * 25}" y="{y + 84 - hh}" width="14" '
+                 f'height="{hh}" fill="{col}" class="grow" '
+                 f'style="animation-delay:{0.7 + i * 0.06:.2f}s"/>')
     lx = x + 396
-    out.append(text(lx, y + 18, "SESSION", face=MONO, size=9, fill=MUTE,
-                    track=1.6))
-    out.append(text(lx, y + 46, "+14%", face=MONO, size=24, fill=a,
-                    weight="700"))
-    out.append(text(lx, y + 68, "above your normal", face=SANS, size=11,
-                    fill=MUTE))
-    return "".join(out)
+    o.append(text(lx, y + 18, "SESSION", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.6))
+    o.append(text(lx, y + 46, "+14%", face=MONO, size=24, fill=a,
+                  weight="700", cls="pop", delay=1.75))
+    o.append(text(lx, y + 68, "above your normal", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.9))
+    return "".join(o), ""
 
 
-def inst_seismic(x, y, w, a):
-    """Quake: the trace, running, with the events it is made of."""
-    import math
+def inst_seismic(x, y, w, a, *, live=None):
+    """Quake: the trace, and the per-hour bars the portal's own mock shows."""
+    events = live["events"] if live else {58: 1.0, 150: 0.55, 268: 0.85,
+                                          392: 0.4, 470: 0.7}
+    bars = live["bars"] if live else [34, 52, 41, 70, 88, 60, 46, 74, 38, 57,
+                                      100, 44]
+    stamp = live["stamp"] if live else "M 2.5+ · LAST 24 H · USGS ⊕ EMSC"
+    bval = live["b"] if live else "b = 0.98"
+
     pts = []
-    events = {58: 1.0, 150: 0.55, 268: 0.85, 392: 0.4, 470: 0.7}
-    for px in range(0, 520, 2):
+    for px in range(0, 400, 2):
         v = math.sin(px * 0.28) * 1.6 + math.sin(px * 0.11) * 1.2
         for ex, amp in events.items():
-            dx = px - ex
-            v += math.sin(dx * 0.75) * 30 * amp * math.exp(-(dx * dx) / 240.0)
-        pts.append((px, max(-38, min(38, v))))
+            exx = ex * 400 / 520
+            dx = px - exx
+            v += math.sin(dx * 0.75) * 28 * amp * math.exp(-(dx * dx) / 200.0)
+        pts.append((px, max(-36, min(36, v))))
     d = "M " + " L ".join(f"{x + px} {y + 42 - pv:.1f}" for px, pv in pts)
-    out = [f'<rect x="{x}" y="{y}" width="520" height="84" fill="none" '
-           f'stroke="{HAIR}"/>',
-           dashline(x, y + 42, 520, rgba(a, 0.16))]
-    out.append(draw(d, a, width=1.5, dash=1400, dur="2.6s", begin="0.5s"))
+
+    o = [f'<rect x="{x}" y="{y}" width="400" height="84" fill="none" '
+         f'stroke="{HAIR}"/>', rule(x, y + 42, 400, rgba(a, 0.16))]
+    o.append(path_draw(d, a, 1200, width=1.5, delay=0.6, dur=2.4))
     for ex, amp in events.items():
+        px = x + ex * 400 / 520
         r = 3 + amp * 3
-        out.append(
-            f'<circle cx="{x + ex}" cy="{y + 42}" r="{r:.1f}" fill="none" '
-            f'stroke="{a}" stroke-width="1.2" opacity="0">'
-            f'<animate attributeName="opacity" values="0;0.55;0" dur="2.4s" '
-            f'begin="{2.6 + ex / 520 * 1.4:.2f}s" repeatCount="indefinite"/>'
-            f'<animate attributeName="r" values="{r:.1f};{r * 2.4:.1f}" '
-            f'dur="2.4s" begin="{2.6 + ex / 520 * 1.4:.2f}s" '
-            f'repeatCount="indefinite"/></circle>')
-    out.append(text(x + 4, y - 2, "M 2.5+ · LAST 24 H · USGS ⊕ EMSC",
-                    face=MONO, size=9, fill=MUTE, track=1.4))
-    out.append(text(x + 516, y - 2, "b = 0.98", face=MONO, size=9, fill=a,
-                    track=1.2, anchor="end"))
-    return "".join(out)
+        o.append(f'<circle cx="{px:.0f}" cy="{y + 42}" r="{r:.1f}" '
+                 f'fill="none" stroke="{a}" stroke-width="1.2" class="halo" '
+                 f'style="animation-delay:{2.6 + ex / 520 * 1.3:.2f}s"/>')
+    o.append(text(x + 2, y - 2, stamp, face=MONO, size=9, fill=MUTE, track=1.2,
+                  cls="rise", delay=0.5))
+    # the portal's .qk-bars, same amber gradient
+    bx = x + 418
+    o.append('<defs><linearGradient id="qkb" x1="0" y1="0" x2="0" y2="1">'
+             '<stop offset="0%" stop-color="#E8A33D"/>'
+             '<stop offset="100%" stop-color="#B87A1E"/></linearGradient>'
+             '</defs>')
+    for i, hpc in enumerate(bars[:12]):
+        bh = max(3, hpc * 0.62)
+        o.append(f'<rect x="{bx + i * 10}" y="{y + 84 - bh:.0f}" width="7" '
+                 f'height="{bh:.0f}" rx="2" fill="url(#qkb)" class="grow" '
+                 f'style="animation-delay:{1.0 + i * 0.05:.2f}s"/>')
+    o.append(text(bx, y - 2, "PER 2 H", face=MONO, size=9, fill=MUTE,
+                  track=1.2, cls="rise", delay=1.0))
+    o.append(text(x + 400, y - 2, bval, face=MONO, size=9, fill=a, track=1.2,
+                  anchor="end", cls="rise", delay=1.4))
+    return "".join(o), ""
 
 
 def inst_tools(x, y, w, a):
-    """Studio: the tool grid, lighting one at a time — each its own install."""
-    out = []
-    cols, rows, cell, gap = 8, 3, 30, 6
-    n = 0
-    for r in range(rows):
-        for c in range(cols):
-            gx, gy = x + c * (cell + gap), y + 6 + r * (cell - 4 + gap)
-            out.append(
-                f'<rect x="{gx}" y="{gy}" width="{cell}" height="{cell - 4}" '
-                f'fill="{rgba(a, 0.06)}" stroke="{rgba(a, 0.18)}">'
-                f'<animate attributeName="fill" '
-                f'values="{rgba(a, 0.06)};{rgba(a, 0.06)};{rgba(a, 0.34)};'
-                f'{rgba(a, 0.06)}" keyTimes="0;0.86;0.92;1" dur="7s" '
-                f'begin="{0.9 + n * 0.11:.2f}s" repeatCount="indefinite"/>'
-                f'</rect>')
-            n += 1
-    lx = x + cols * (cell + gap) + 14
-    out.append(text(lx, y + 20, "OFFLINE", face=MONO, size=9, fill=MUTE,
-                    track=1.6))
-    out.append(text(lx, y + 46, "31", face=MONO, size=26, fill=a, weight="700"))
-    out.append(text(lx, y + 68, "installable tools", face=SANS, size=11,
-                    fill=MUTE))
-    return "".join(out)
+    """Studio: the portal's own browser window, with the portal's own tiles."""
+    tiles = [("JPG → PNG", "IMAGE"), ("Resize", "IMAGE"), ("JSON", "DATA"),
+             ("CSV ⇄ JSON", "DATA"), ("Markdown", "TEXT"), ("QR code", "WEB")]
+    ww = 344
+    o = [f'<rect x="{x}" y="{y - 4}" width="{ww}" height="96" rx="8" '
+         f'fill="#101315" stroke="{rgba("#ffffff", 0.12)}"/>',
+         f'<rect x="{x}" y="{y - 4}" width="{ww}" height="22" rx="8" '
+         f'fill="#161A1D"/>',
+         f'<rect x="{x}" y="{y + 10}" width="{ww}" height="4" fill="#161A1D"/>',
+         rule(x, y + 14, ww, rgba("#ffffff", 0.07))]
+    for i, c in enumerate(("#E07A6B", "#E0B45B", "#3FE0C5")):
+        o.append(f'<circle cx="{x + 12 + i * 12}" cy="{y + 7}" r="3.5" '
+                 f'fill="{c}"/>')
+    o.append(text(x + 56, y + 10.5, "studio.dfklabs.com/tools", face=MONO,
+                  size=8.5, fill="#7F8A86"))
+    for i, (name, kind) in enumerate(tiles):
+        tx = x + 10 + (i % 3) * 110
+        ty = y + 20 + (i // 3) * 31
+        o.append(grp(f'<rect x="{tx}" y="{ty}" width="104" height="25" rx="4" '
+                     f'fill="{rgba(a, 0.07)}" stroke="{rgba(a, 0.16)}"/>'
+                     + text(tx + 9, ty + 12, name, face=SANS, size=9.5,
+                            fill=INK, weight="600")
+                     + text(tx + 9, ty + 22, kind, face=MONO, size=7.5,
+                            fill=MUTE, track=1),
+                     cls="pop", delay=0.9 + i * 0.08))
+    o.append(text(x + 10, y + 84, "● ALL PROCESSING HAPPENS IN YOUR BROWSER",
+                  face=MONO, size=7.5, fill=rgba(a, 0.75), track=1,
+                  cls="rise", delay=1.6))
+    lx = x + ww + 18
+    o.append(text(lx, y + 18, "OFFLINE", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.5))
+    o.append(text(lx, y + 46, "31", face=MONO, size=26, fill=a, weight="700",
+                  cls="pop", delay=1.65))
+    o.append(text(lx, y + 68, "installable tools", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.8))
+    return "".join(o), ""
 
 
 def inst_board(x, y, w, a):
     """Paneltir: a card crossing columns — the drag the kit exists for."""
-    out = []
-    names = ("IDEAS", "NEXT", "DOING", "DONE")
-    for i, name in enumerate(names):
+    o = []
+    for i, name in enumerate(("IDEAS", "NEXT", "DOING", "DONE")):
         cx = x + i * 96
-        out.append(f'<rect x="{cx}" y="{y + 12}" width="84" height="72" '
-                   f'fill="{rgba(a, 0.04)}" stroke="{rgba(a, 0.16)}"/>')
-        out.append(text(cx + 4, y + 6, name, face=MONO, size=8.5, fill=MUTE,
-                        track=1.4))
+        o.append(grp(f'<rect x="{cx}" y="{y + 12}" width="84" height="72" '
+                     f'fill="{rgba(a, 0.04)}" stroke="{rgba(a, 0.16)}"/>'
+                     + text(cx + 4, y + 6, name, face=MONO, size=8.5,
+                            fill=MUTE, track=1.4),
+                     cls="rise", delay=0.7 + i * 0.08))
         for j in range(2 if i != 2 else 1):
-            out.append(f'<rect x="{cx + 8}" y="{y + 22 + j * 20}" width="68" '
-                       f'height="13" fill="{rgba(a, 0.13)}"/>')
-    # the travelling card
-    out.append(
-        f'<g><rect x="{x + 8}" y="{y + 22}" width="68" height="13" '
-        f'fill="{a}" opacity="0.9">'
-        f'<animateTransform attributeName="transform" type="translate" '
-        f'values="0,0; 96,20; 192,0; 288,20; 0,0" keyTimes="0;0.25;0.5;0.75;1" '
-        f'dur="9s" begin="1.4s" repeatCount="indefinite" calcMode="spline" '
-        f'keySplines="0.5 0 0.2 1;0.5 0 0.2 1;0.5 0 0.2 1;0.5 0 0.2 1"/>'
-        f'</rect></g>')
+            o.append(f'<rect x="{cx + 8}" y="{y + 22 + j * 20}" width="68" '
+                     f'height="13" fill="{rgba(a, 0.13)}" class="rise" '
+                     f'style="animation-delay:{1.0 + i * 0.08 + j * 0.05:.2f}s"'
+                     f'/>')
+    o.append(f'<rect x="{x + 8}" y="{y + 22}" width="68" height="13" '
+             f'fill="{a}" opacity="0.92" class="travel"/>')
     lx = x + 4 * 96 + 14
-    out.append(text(lx, y + 26, "POINTER EVENTS", face=MONO, size=9, fill=MUTE,
-                    track=1.4))
-    out.append(text(lx, y + 48, "drag that works", face=SANS, size=12.5,
-                    fill=INK))
-    out.append(text(lx, y + 66, "on iOS touch", face=SANS, size=12.5,
-                    fill=MUTE))
-    return "".join(out)
+    o.append(text(lx, y + 26, "POINTER EVENTS", face=MONO, size=9, fill=MUTE,
+                  track=1.4, cls="rise", delay=1.6))
+    o.append(text(lx, y + 48, "drag that works", face=SANS, size=12.5,
+                  fill=INK, cls="rise", delay=1.72))
+    o.append(text(lx, y + 66, "on iOS touch", face=SANS, size=12.5, fill=MUTE,
+                  cls="rise", delay=1.84))
+    css = ("\n  .travel{animation:travel 9s cubic-bezier(.5,0,.2,1) 1.6s "
+           "infinite}"
+           "\n  @keyframes travel{0%{transform:none}"
+           "22%{transform:translate(96px,20px)}"
+           "48%{transform:translate(192px,0)}"
+           "72%{transform:translate(288px,20px)}"
+           "96%,100%{transform:none}}")
+    return "".join(o), css
 
 
 def inst_ticker(x, y, w, a):
-    """VibeClaude: the monitor line, scrolling what Xcode is being told."""
+    """VibeClaude: the monitor line, showing what Xcode is being told."""
     rows = [("14:02:11", "build", "succeeded · 0 warnings"),
             ("14:02:44", "edit", "ContentView.swift +18 −11"),
             ("14:03:09", "test", "42 passed"),
             ("14:03:31", "wait", "your call")]
-    out = [f'<rect x="{x}" y="{y}" width="{w}" height="86" '
-           f'fill="{rgba(a, 0.04)}" stroke="{rgba(a, 0.14)}"/>']
+    o = [f'<rect x="{x}" y="{y}" width="{w}" height="86" rx="4" '
+         f'fill="{rgba(a, 0.04)}" stroke="{rgba(a, 0.14)}"/>']
     for i, (t, kind, msg) in enumerate(rows):
         ry = y + 20 + i * 18
-        out.append(f'<g opacity="0"><animate attributeName="opacity" '
-                   f'values="0;1" dur="0.4s" begin="{0.7 + i * 0.35:.2f}s" '
-                   f'fill="freeze"/>'
-                   + text(x + 14, ry, t, face=MONO, size=10, fill=MUTE)
-                   + text(x + 76, ry, kind, face=MONO, size=10, fill=a,
-                          track=0.8)
-                   + text(x + 132, ry, msg, face=MONO, size=10, fill=BODY)
-                   + "</g>")
-    return "".join(out)
+        o.append(grp(text(x + 14, ry, t, face=MONO, size=10, fill=MUTE)
+                     + text(x + 76, ry, kind, face=MONO, size=10, fill=a,
+                            track=0.8)
+                     + text(x + 132, ry, msg, face=MONO, size=10, fill=BODY),
+                     cls="rise", delay=0.8 + i * 0.3))
+    o.append(f'<rect x="{x + 236}" y="{y + 20 + 3 * 18 - 9}" width="7" '
+             f'height="11" fill="{a}" class="beat" '
+             f'style="animation-delay:2.2s"/>')
+    return "".join(o), ""
 
 
 INSTRUMENTS = {
@@ -434,56 +608,64 @@ INSTRUMENTS = {
 
 # ── The card ─────────────────────────────────────────────────────────────────
 
-def card(p, *, wide=False):
+def card(p, *, wide=False, live=None):
     w, h = (WIDE_W, WIDE_H) if wide else (CARD_W, CARD_H)
     a, slug = p["accent"], p["slug"]
     o = []
 
     o.append(f'<rect width="{w}" height="{h}" fill="url(#g-{slug})"/>')
-    # the 2px top rule the portal reveals on hover, drawn on instead
-    o.append(f'<rect x="0" y="0" width="0" height="2" fill="url(#r-{slug})">'
-             f'<animate attributeName="width" values="0;{w}" dur="1.1s" '
-             f'begin="0.2s" fill="freeze" calcMode="spline" keyTimes="0;1" '
-             f'keySplines="0.16 1 0.3 1"/></rect>')
+    o.append(f'<rect x="0" y="0" width="{w}" height="2" fill="url(#r-{slug})" '
+             f'class="wipe" style="animation-delay:.15s"/>')
 
-    tag, tw = tag_box(PAD, 40, p["tag"], a)
+    tag, tw = tag_box(PAD, 40, p["tag"], a, 0.5)
     o.append(tag)
     o.append(text(PAD + tw + 12, 53.5, p["platform"], face=MONO, size=9.5,
-                  fill=MUTE, track=1.2))
-    o.append(status(w - PAD - 58, 50, p["status"], a))
+                  fill=MUTE, track=1.2, cls="rise", delay=0.58))
+    o.append(state_dot(w - PAD - 63, 50, p["state"], a, 0.66))
 
-    o.append(text(PAD, 112, p["mark"], face=p["face"], size=27, fill=INK,
-                  weight="700", track=6))
-    o.append(f'<rect x="{PAD + 2}" y="124" width="0" height="3" rx="1.5" '
-             f'fill="{a}"><animate attributeName="width" values="0;26" '
-             f'dur="0.5s" begin="0.9s" fill="freeze"/></rect>')
+    o.append(logo(p["logo"], PAD, 78, 52, a))
+    o.append(text(PAD + 68, 112, p["mark"], face=p["face"], size=27, fill=INK,
+                  weight="700", track=6, cls="rise", delay=0.42))
+    o.append(f'<rect x="{PAD + 70}" y="124" width="26" height="3" rx="1.5" '
+             f'fill="{a}" class="wipe" style="animation-delay:.62s"/>')
 
     for i, ln in enumerate(p["blurb"]):
-        o.append(text(PAD, 158 + i * 19, ln, face=SANS, size=12.5, fill=BODY))
+        o.append(text(PAD, 170 + i * 19, ln, face=SANS, size=12.5, fill=BODY,
+                      cls="rise", delay=0.7 + i * 0.08))
 
-    cy = 158 + len(p["blurb"]) * 19 + 12
+    cy = 170 + len(p["blurb"]) * 19 + 12
     cx = PAD
-    for label in p["chips"]:
-        ch, cw = pill(cx, cy, label, a)
+    for i, label in enumerate(p["chips"]):
+        ch, cw = pill(cx, cy, label, a, 0.95 + i * 0.07)
         o.append(ch)
         cx += cw + 7
 
-    iy = cy + 42
-    o.append(INSTRUMENTS[p["instrument"]](PAD, iy, w - PAD * 2, a))
+    iy = cy + 44
+    fn = INSTRUMENTS[p["instrument"]]
+    body, css = (fn(PAD, iy, w - PAD * 2, a, live=live)
+                 if p["instrument"] == "seismic" else
+                 fn(PAD, iy, w - PAD * 2, a))
+    o.append(body)
 
-    o.append(dashline(PAD, h - 40, w - PAD * 2))
+    o.append(rule(PAD, h - 40, w - PAD * 2))
     o.append(text(PAD, h - 20, p["url"], face=MONO, size=10.5, fill=a,
-                  track=0.4))
+                  track=0.4, cls="rise", delay=1.9))
     o.append(text(w - PAD, h - 20, "DFK LABS", face=MONO, size=9.5, fill=MUTE,
-                  track=2, anchor="end"))
+                  track=2, anchor="end", cls="rise", delay=2.0))
 
+    # the sheen the portal shows on hover, run once on a long loop instead
+    o.append(f'<g clip-path="url(#c-{slug})"><rect x="{-w * 0.38:.0f}" y="0" '
+             f'width="{w * 0.34:.0f}" height="{h}" fill="url(#s-{slug})" '
+             f'class="sheen"/></g>')
     o.append(f'<rect x="0.5" y="0.5" width="{w - 1}" height="{h - 1}" '
              f'fill="none" stroke="{LINE}"/>')
 
+    label = (f"{p['mark']} — {p['tag']}, {p['platform']}, {p['state']}. "
+             f"{' '.join(p['blurb'])} {p['url']}")
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}"
-     width="{w}" height="{h}" role="img"
-     aria-label="{esc(p['mark'] + ' — ' + p['tag'] + ', ' + p['platform'] + ', ' + p['status'] + '. ' + ' '.join(p['blurb']) + ' ' + p['url'])}">
+     width="{w}" height="{h}" role="img" aria-label="{esc(label)}">
   <title>{esc(p['mark'] + ' — ' + p['tag'])}</title>
+  {stylesheet(css)}
   <defs>
     <linearGradient id="g-{slug}" x1="0" y1="0" x2="1" y2="1">
       <stop offset="35%" stop-color="{BLOCK}"/>
@@ -493,6 +675,12 @@ def card(p, *, wide=False):
       <stop offset="0%" stop-color="{a}"/>
       <stop offset="100%" stop-color="{a}" stop-opacity="0"/>
     </linearGradient>
+    <linearGradient id="s-{slug}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="{a}" stop-opacity="0"/>
+      <stop offset="50%" stop-color="{a}" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="{a}" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="c-{slug}"><rect width="{w}" height="{h}"/></clipPath>
   </defs>
   {''.join(o)}
 </svg>
@@ -502,88 +690,73 @@ def card(p, *, wide=False):
 # ── The header ───────────────────────────────────────────────────────────────
 
 def header():
-    w, h = 1240, 400
-    o = []
-    o.append(f'<rect width="{w}" height="{h}" fill="{BG}"/>')
+    w, h = 1240, 420
+    o = [f'<rect width="{w}" height="{h}" fill="{BG}"/>']
 
-    # the portal's particle grid, as a field that settles rather than a canvas
-    import math
-    for i in range(120):
-        px = (i * 137) % w
-        py = 56 + ((i * 89) % (h - 110))
-        r = 1 + (i % 3) * 0.5
-        dur = 3 + (i % 7) * 0.6
-        op = 0.05 + (i % 5) * 0.035
-        o.append(
-            f'<circle cx="{px}" cy="{py}" r="{r}" fill="{BLUE_LT}" '
-            f'opacity="0"><animate attributeName="opacity" '
-            f'values="0;{op:.3f};{op * 0.3:.3f};{op:.3f}" dur="{dur:.1f}s" '
-            f'begin="{(i % 11) * 0.19:.2f}s" repeatCount="indefinite"/>'
-            f'</circle>')
-    for i in range(9):
+    # the portal's particle grid: three layers drifting at different rates
+    for layer, (count, op, r) in enumerate(
+            ((46, 0.10, 1.6), (58, 0.07, 1.1), (70, 0.05, 0.8))):
+        dots = []
+        for i in range(count):
+            px = (i * 173 + layer * 61) % w
+            py = 64 + ((i * 97 + layer * 37) % (h - 120))
+            dots.append(
+                f'<circle cx="{px}" cy="{py}" r="{r}" fill="{BLUE_LT}"/>')
+        o.append(f'<g opacity="{op}" class="drift{layer}">'
+                 f'{"".join(dots)}</g>')
+    for i in range(7):
         x1 = (i * 211) % w
-        o.append(f'<line x1="{x1}" y1="56" x2="{(x1 + 180) % w}" y2="{h - 40}" '
+        o.append(f'<line x1="{x1}" y1="60" x2="{(x1 + 180) % w}" y2="{h - 46}" '
                  f'stroke="{BLUE}" stroke-opacity="0.05"/>')
 
     # nav
-    o.append(f'<rect width="{w}" height="56" fill="{rgba("#050505", 0.9)}"/>')
-    o.append(dashline(0, 56, w, HAIR))
-    o.append(text(32, 36, "DFK", face=MONO, size=18, fill=INK, weight="700",
-                  track=1))
-    o.append(text(80, 35, "iOS ENGINEERING UNIT", face=MONO, size=9.5,
-                  fill=MUTE, track=2.6))
+    o.append(f'<rect width="{w}" height="60" fill="{rgba("#050505", 0.92)}"/>')
+    o.append(rule(0, 60, w, HAIR))
+    o.append(dfk_mark(32, 15))
+    o.append(text(102, 36, "iOS ENGINEERING UNIT", face=MONO, size=9.5,
+                  fill=MUTE, track=2.6, cls="rise", delay=0.22))
     for i, item in enumerate(("iOS", "WEB", "TOOLS", "PROJECTS")):
-        o.append(text(w - 470 + i * 62, 35, item, face=MONO, size=9.5,
-                      fill=MUTE, track=1.6, anchor="middle"))
-    o.append(f'<g><text x="{w - 32}" y="35" font-family="{MONO}" '
-             f'font-size="9.5" fill="{BLUE_LT}" letter-spacing="1.6" '
-             f'text-anchor="end">SYSTEM: ACTIVE'
-             f'<animate attributeName="opacity" values="1;0.45;1" dur="2.4s" '
-             f'repeatCount="indefinite"/></text></g>')
+        o.append(text(w - 470 + i * 62, 36, item, face=MONO, size=9.5,
+                      fill=MUTE, track=1.6, anchor="middle", cls="rise",
+                      delay=0.3 + i * 0.05))
+    o.append(grp(text(w - 32, 36, "SYSTEM: ACTIVE", face=MONO, size=9.5,
+                      fill=BLUE_LT, track=1.6, anchor="end"),
+                 cls="beat", delay=1.4))
 
-    # eyebrow
     ex, ew = w / 2 - 84, 168
-    o.append(f'<g opacity="0"><animate attributeName="opacity" values="0;1" '
-             f'dur="0.6s" begin="0.3s" fill="freeze"/>'
-             f'<rect x="{ex}" y="112" width="{ew}" height="28" '
-             f'fill="{rgba("#ffffff", 0.05)}" stroke="{LINE}"/>'
-             + text(w / 2, 130, "/// AI-DRIVEN FLOW", face=MONO, size=11,
-                    fill=BLUE_LT, anchor="middle", track=1.4)
-             + "</g>")
+    o.append(grp(f'<rect x="{ex}" y="118" width="{ew}" height="28" '
+                 f'fill="{rgba("#ffffff", 0.05)}" stroke="{LINE}"/>'
+                 + text(w / 2, 136, "/// AI-DRIVEN FLOW", face=MONO, size=11,
+                        fill=BLUE_LT, anchor="middle", track=1.4),
+                 cls="rise", delay=0.45))
 
-    # the headline, two lines, revealed by a wipe like the portal's reveal
     for i, line in enumerate(("NATIVE", "INTELLIGENCE.")):
-        o.append(
-            f'<g clip-path="url(#wipe{i})">'
-            + text(w / 2, 216 + i * 68, line, face=SANS, size=72, fill=INK,
-                   weight="900", track=-3, anchor="middle")
-            + "</g>")
+        o.append(text(w / 2, 224 + i * 70, line, face=SANS, size=74, fill=INK,
+                      weight="900", track=-3, anchor="middle", cls="rise",
+                      delay=0.6 + i * 0.13))
 
-    o.append(f'<g opacity="0"><animate attributeName="opacity" values="0;1" '
-             f'dur="0.8s" begin="1.5s" fill="freeze"/>'
-             + text(w / 2, 322, "We build iOS apps and tools that replace "
-                    "friction with flow.", face=SANS, size=17, fill=MUTE,
-                    anchor="middle")
-             + "</g>")
+    o.append(text(w / 2, 336, "We build iOS apps and tools that replace "
+                  "friction with flow.", face=SANS, size=17, fill=MUTE,
+                  anchor="middle", cls="rise", delay=0.92))
 
-    o.append(dashline(0, h - 44, w, HAIR))
-    o.append(text(32, h - 18, "SEVEN SURFACES · ONE FRAME",
-                  face=MONO, size=9.5, fill=MUTE, track=2))
-    o.append(text(w - 32, h - 18, "ENGINEERED IN SILENCE.", face=MONO,
-                  size=9.5, fill=MUTE, track=2, anchor="end"))
+    o.append(rule(0, h - 46, w, HAIR))
+    o.append(text(32, h - 20, "SEVEN SURFACES · ONE FRAME", face=MONO,
+                  size=9.5, fill=MUTE, track=2, cls="rise", delay=1.1))
+    o.append(text(w - 32, h - 20, "ENGINEERED IN SILENCE.", face=MONO,
+                  size=9.5, fill=MUTE, track=2, anchor="end", cls="rise",
+                  delay=1.2))
 
-    clips = "".join(
-        f'<clipPath id="wipe{i}"><rect x="0" y="{160 + i * 68}" width="0" '
-        f'height="76"><animate attributeName="width" values="0;{w}" '
-        f'dur="1s" begin="{0.5 + i * 0.22:.2f}s" fill="freeze" '
-        f'calcMode="spline" keyTimes="0;1" keySplines="0.16 1 0.3 1"/>'
-        f'</rect></clipPath>' for i in range(2))
-
+    css = "".join(
+        f"\n  .drift{i}{{animation:drift{i} {d}s ease-in-out infinite "
+        f"alternate}}"
+        f"\n  @keyframes drift{i}{{to{{transform:translate({dx}px,{dy}px)}}}}"
+        for i, (d, dx, dy) in enumerate(((26, 18, -9), (34, -14, 7),
+                                         (44, 9, -5))))
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}"
      width="{w}" height="{h}" role="img"
      aria-label="DFK Labs, iOS Engineering Unit. Native Intelligence. We build iOS apps and tools that replace friction with flow.">
   <title>DFK Labs — Native Intelligence</title>
-  <defs>{clips}</defs>
+  {stylesheet(css)}
   {''.join(o)}
 </svg>
 """
@@ -592,50 +765,136 @@ def header():
 # ── The closing strip ────────────────────────────────────────────────────────
 
 def footer():
-    w, h = 1240, 112
-    o = [f'<rect width="{w}" height="{h}" fill="{BG}"/>',
-         dashline(0, 0, w, LINE)]
+    w, h = 1240, 116
+    o = [f'<rect width="{w}" height="{h}" fill="{BG}"/>', rule(0, 0, w, LINE)]
     marks = [(p["mark"], p["accent"]) for p in PRODUCTS]
     marks.append((OPEN_SOURCE["mark"], OPEN_SOURCE["accent"]))
     x = 32
     for i, (name, a) in enumerate(marks):
-        o.append(f'<rect x="{x}" y="38" width="58" height="3" fill="{a}" '
-                 f'opacity="0.22"><animate attributeName="opacity" '
-                 f'values="0.22;0.22;1;0.22" keyTimes="0;0.1;0.18;1" '
-                 f'dur="6.3s" begin="{i * 0.4:.2f}s" '
-                 f'repeatCount="indefinite"/></rect>')
-        o.append(text(x, 62, name, face=MONO, size=8.5, fill=MUTE, track=1.2))
+        o.append(f'<rect x="{x}" y="40" width="58" height="3" fill="{a}" '
+                 f'class="tick" style="animation-delay:{i * 0.42:.2f}s"/>')
+        o.append(text(x, 64, name, face=MONO, size=8.5, fill=MUTE, track=1.2))
         x += 72
-    o.append(text(w - 32, 44, "ENGINEERED IN SILENCE.", face=MONO, size=11,
+    o.append(text(w - 32, 46, "ENGINEERED IN SILENCE.", face=MONO, size=11,
                   fill=INK, track=2.4, anchor="end"))
-    o.append(text(w - 32, 62, "© 2026 DFK Labs", face=MONO, size=9.5,
+    o.append(text(w - 32, 64, "© 2026 DFK Labs", face=MONO, size=9.5,
                   fill=MUTE, track=1.2, anchor="end"))
+    css = ("\n  .tick{opacity:.22;animation:tick 6.3s ease-in-out infinite}"
+           "\n  @keyframes tick{0%,8%{opacity:.22}14%{opacity:1}"
+           "24%,100%{opacity:.22}}")
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}"
      width="{w}" height="{h}" role="img"
      aria-label="Engineered in Silence. © 2026 DFK Labs.">
   <title>Engineered in Silence</title>
+  {stylesheet(css)}
   {''.join(o)}
 </svg>
 """
 
 
+# ── Live seismic data ────────────────────────────────────────────────────────
+
+FEED = ("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/"
+        "2.5_day.geojson")
+SNAPSHOT = HERE / "quake-snapshot.json"
+
+
+def fetch_quake():
+    """The real last-24 h catalogue, reduced to what the panel draws.
+
+    Refreshed by .github/workflows/refresh-quake.yml. On any failure the caller
+    keeps the committed snapshot: a profile showing yesterday's numbers beats
+    one showing a stack trace.
+    """
+    req = urllib.request.Request(FEED, headers={
+        "User-Agent": "daifukus-profile/1.0 (+https://github.com/daifukus)"})
+    with urllib.request.urlopen(req, timeout=25) as r:
+        data = json.load(r)
+
+    feats = [f for f in data.get("features", [])
+             if (f.get("properties") or {}).get("mag") is not None
+             and (f.get("properties") or {}).get("time") is not None]
+    now = datetime.now(timezone.utc)
+    now_ms = now.timestamp() * 1000
+
+    mags = [f["properties"]["mag"] for f in feats]
+    buckets = [0] * 12
+    for f in feats:
+        age_h = (now_ms - f["properties"]["time"]) / 3_600_000
+        if 0 <= age_h < 24:
+            buckets[int(age_h / 2)] += 1
+    peak = max(buckets) or 1
+    bars = [max(6, round(c / peak * 100)) for c in reversed(buckets)]
+
+    top = sorted(feats, key=lambda f: -f["properties"]["mag"])[:5]
+    events = {}
+    span = 520
+    for i, f in enumerate(top):
+        m = f["properties"]["mag"]
+        pos = int(40 + i * (span - 90) / max(1, len(top) - 1))
+        events[pos] = max(0.28, min(1.0, (m - 2.5) / 4.0))
+
+    # Aki (1965) maximum-likelihood b, above the feed's own completeness
+    mc = 2.5
+    above = [m for m in mags if m >= mc]
+    if len(above) >= 20:
+        mean = sum(above) / len(above)
+        b = math.log10(math.e) / max(1e-6, mean - (mc - 0.05))
+        bval = f"b = {b:.2f}"
+    else:
+        bval = f"n = {len(above)}"
+
+    return {
+        "events": events or {58: 1.0},
+        "bars": bars,
+        "b": bval,
+        "stamp": (f"M 2.5+ · {len(mags)} EVENTS · "
+                  f"{now.strftime('%Y-%m-%d %H:%MZ')} · USGS"),
+    }
+
+
+def load_live(refresh):
+    if refresh:
+        try:
+            live = fetch_quake()
+            SNAPSHOT.write_text(json.dumps(live, indent=2) + "\n",
+                                encoding="utf-8")
+            print(f"  quake: {live['stamp']}")
+            return live
+        except Exception as exc:                       # noqa: BLE001
+            print(f"  quake: feed unavailable ({exc}); keeping the snapshot")
+    if SNAPSHOT.exists():
+        raw = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+        raw["events"] = {int(k): v for k, v in raw["events"].items()}
+        return raw
+    return None
+
+
+# ── Build ────────────────────────────────────────────────────────────────────
+
 def main():
-    here = Path(__file__).resolve().parent
+    ap = argparse.ArgumentParser(
+        description="Render the profile README's panels.")
+    ap.add_argument("--live", action="store_true",
+                    help="refresh the Quake panel from the USGS feed first")
+    args = ap.parse_args()
+
+    live = load_live(args.live)
     written = []
 
     def put(name, body):
-        p = here / name
+        p = HERE / name
         p.write_text(body, encoding="utf-8")
         written.append((name, p.stat().st_size))
 
     put("header.svg", header())
     for prod in PRODUCTS:
-        put(f"card-{prod['slug']}.svg", card(prod))
+        put(f"card-{prod['slug']}.svg", card(prod, live=live))
     put("card-vibeclaude.svg", card(OPEN_SOURCE, wide=True))
     put("footer.svg", footer())
 
     for name, size in written:
-        print(f"  assets/{name:<24} {size:>7,} bytes")
+        print(f"  assets/{name:<24} {size:>8,} bytes")
     print(f"{len(written)} files, {sum(s for _, s in written):,} bytes total")
 
 

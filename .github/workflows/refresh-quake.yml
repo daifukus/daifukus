@@ -1,0 +1,48 @@
+name: Refresh Quake panel
+
+# The seismic trace on the profile is not decoration: it is the real last-24 h
+# USGS catalogue, redrawn four times a day. Same discipline as the app it
+# stands for — the panel names what it rests on, and the b-value under it is
+# fitted from the events actually in the feed.
+#
+# If the feed is unreachable the build keeps assets/quake-snapshot.json and the
+# panel renders the last good numbers rather than failing.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-quake
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Redraw from the live feed
+        run: python3 assets/build.py --live
+
+      - name: Commit only if the numbers moved
+        run: |
+          if git diff --quiet -- assets/; then
+            echo "catalogue unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/
+          git commit -m "Refresh the Quake panel from the USGS feed
+
+          $(python3 -c "import json,pathlib; print(json.loads(pathlib.Path('assets/quake-snapshot.json').read_text())['stamp'])")"
+          git push
