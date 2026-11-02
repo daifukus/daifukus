@@ -21,7 +21,10 @@ own source (`daifukus/DFK`, index.html) and `daifukus/Studio`'s src/site.json:
 
     .dfk-logo       2px white border, 800 weight, -1px tracking,
                     3px 3px hard shadow in --accent
-    Risu, Birdio    the app icons, lifted from the portal as assets/logo-*.jpg
+    Risu, Birdio,   the app icons, lifted from the portal as assets/logo-*.jpg
+    Cue, Aqua L.
+    Cooked, Nitnoi  not on the portal yet: their icons and palettes come from
+                    their own repositories (docs/icon.png, the AppIcon set)
     Quake, Studio   the portal's own path glyphs, vector
     Mule            "M" over linear-gradient(140deg,#4E86F0,#1247B8)
     VibeClaude      the GitHub mark, as the portal's tool card shows it
@@ -94,37 +97,24 @@ GITHUB_MARK = (
 
 # ── The products, as the portal names them ───────────────────────────────────
 
+# Ordered the way the README shows them: what is live first, then everything
+# still in the workshop by how far it can go. The README table is written in
+# this same order; reorder here and there together.
+SERIF = "'Marcellus SC',Georgia,'Times New Roman',serif"   # its wordmark
+SERIF_TEXT = "'Spectral',Georgia,'Times New Roman',serif"   # its body face
+
 PRODUCTS = [
-    dict(
-        slug="risu", mark="RISU", face=ROUND, tag="SMART DOCUMENTS",
-        platform="iOS", state="SOON", accent="#F59E1B", deep="#1E1408",
-        logo=("raster", "logo-risu.jpg"),
-        blurb=["The documents that expire — passport, ID, licence,",
-               "insurance. The dates are read off the photo, and the",
-               "alert lands early enough that renewing is still easy."],
-        chips=["OCR", "MRZ", "Alerts", "Vault"],
-        url="risu.dfklabs.com", instrument="expiry",
-    ),
+    # ── live ──
     dict(
         slug="birdio", mark="BIRDIO", face=ROUND, tag="GOLF & MINIGOLF",
-        platform="iOS", state="SOON", accent="#D9B45B", deep="#0A1B12",
+        platform="iOS · watchOS", state="LIVE", accent="#D9B45B",
+        deep="#0A1B12",
         logo=("raster", "logo-birdio.jpg"),
         blurb=["Every round, remembered. A WHS-style index from your",
                "best 8 of the last 20 — and the one statistic that",
                "names where the strokes are actually going."],
-        chips=["WHS", "Analytics", "Ladder", "On-Device"],
+        chips=["WHS", "Analytics", "Ladder", "Apple Watch", "On-Device"],
         url="birdio.dfklabs.com", instrument="handicap",
-    ),
-    dict(
-        slug="mule", mark="MULE", face=ROUND, tag="STRENGTH TRAINING",
-        platform="iOS · watchOS", state="SOON", accent="#4E86F0",
-        deep="#071A3F",
-        logo=("letter", "M", "#4E86F0", "#1247B8"),
-        blurb=["Every rep, remembered. Each session scored against your",
-               "own baseline, and a coach that cites the study behind",
-               "every recommendation — so you can check it."],
-        chips=["Sets", "Score", "Strength Index", "On-Device"],
-        url="mule.dfklabs.com", instrument="sets",
     ),
     dict(
         slug="quake", mark="QUAKE", face=MONO, tag="SEISMIC MONITOR",
@@ -147,9 +137,80 @@ PRODUCTS = [
         chips=["30+ tools", "Offline", "Installable"],
         url="studio.dfklabs.com", instrument="tools",
     ),
+    # ── in the workshop, by potential ──
+    dict(
+        # daifukus/cooked: README badges give the palette (#FF7A3D on
+        # #0E0F13), the icon is Doomie from docs/icon.png.
+        slug="cooked", mark="COOKED", face=ROUND, tag="SCREEN TIME",
+        platform="iOS", state="IN DEV", accent="#FF7A3D", deep="#24120A",
+        logo=("raster", "logo-cooked.jpg"),
+        blurb=["Feed time turned into the distance your thumb scrolled —",
+               "about 1.1 m a minute — and Doomie, who goes from fresh to",
+               "cooked as you pass your limit. Nothing leaves the phone."],
+        chips=["Screen Time", "Shields", "Doomie", "6 languages"],
+        url="dfklabs.com", instrument="distance",
+    ),
+    dict(
+        slug="risu", mark="RISU", face=ROUND, tag="SMART DOCUMENTS",
+        platform="iOS", state="SOON", accent="#F59E1B", deep="#1E1408",
+        logo=("raster", "logo-risu.jpg"),
+        blurb=["The documents that expire — passport, ID, licence,",
+               "insurance. The dates are read off the photo, and the",
+               "alert lands early enough that renewing is still easy."],
+        chips=["OCR", "MRZ", "Alerts", "Vault"],
+        url="risu.dfklabs.com", instrument="expiry",
+    ),
+    dict(
+        slug="mule", mark="MULE", face=ROUND, tag="STRENGTH TRAINING",
+        platform="iOS · watchOS", state="SOON", accent="#4E86F0",
+        deep="#071A3F",
+        logo=("letter", "M", "#4E86F0", "#1247B8"),
+        blurb=["Every rep, remembered. Each session scored against your",
+               "own baseline, and a coach that cites the study behind",
+               "every recommendation — so you can check it."],
+        chips=["Sets", "Score", "Strength Index", "On-Device"],
+        url="mule.dfklabs.com", instrument="sets",
+    ),
+    dict(
+        # the portal's .aqua-card: lamp gold, Tyrian purple, night sea
+        slug="aqualateris", mark="AQUA LATERIS", face=SERIF,
+        tag="DEDUCTION ADVENTURE", platform="APPLE PLATFORMS", state="SOON",
+        accent="#E3B04F", deep="#0B0F1F",
+        logo=("raster", "logo-aqualateris.jpg"),
+        blurb=["Book I · The Passenger. A mystery on the ancient sea:",
+               "clay-model sets lit by oil lamps, hand-drawn characters",
+               "and puzzles of the period. Free — no ads, no account."],
+        chips=["Deduction", "Period Puzzles", "Real Recipes", "No Tracking"],
+        url="dfklabs.com/aqualateris", instrument="tablet",
+    ),
+    dict(
+        # the portal's .cue-card: black screen, amber cue light
+        slug="cue", mark="CUE", face=SANS, tag="SPEECH NOTES",
+        platform="iOS · watchOS", state="SOON", accent="#FFB23F",
+        deep="#1F1505",
+        logo=("raster", "logo-cue.jpg"),
+        blurb=["Speaker notes your audience never sees. The watch screen",
+               "stays black, as if it were off; a double tap shows your",
+               "next point for a moment, and then it is gone again."],
+        chips=["Double tap", "Black screen", "6 languages", "On-Device"],
+        url="dfklabs.com/cue", instrument="cue",
+    ),
+    dict(
+        # daifukus/nitnoi wears the DFK Studio palette (Theme/Palette.swift)
+        slug="nitnoi", mark="NITNOI", face=SANS, tag="TRAVEL PHRASEBOOK",
+        platform="iOS · watchOS", state="IN DEV", accent="#3FE0C5",
+        deep="#062A24",
+        logo=("raster", "logo-nitnoi.jpg"),
+        blurb=["A little of the language, the money at a glance: sixteen",
+               "words for a market stall and every banknote of the country,",
+               "drawn into your Apple Watch face. Works offline."],
+        chips=["26 countries", "Watch face", "Offline", "Local-first"],
+        url="dfklabs.com", instrument="face",
+    ),
     dict(
         slug="paneltir", mark="PANELTIR", face=MONO, tag="UI KIT",
-        platform="REACT · TS", state="LIVE", accent="#FCEE0A", deep="#1A0711",
+        platform="INTERNAL · REACT", state="SOON", accent="#FCEE0A",
+        deep="#1A0711",
         logo=("glyph", "M26 28v44M50 28v30M74 28v38", "#1A0711", 11),
         blurb=["The admin-panel kit behind every DFK board. It owns",
                "structure and behaviour and never colour: each project",
@@ -161,10 +222,10 @@ PRODUCTS = [
 
 OPEN_SOURCE = dict(
     slug="vibeclaude", mark="VIBECLAUDE", face=MONO, tag="CLI TOOL",
-    platform="macOS", state="PUBLIC", accent=GREEN, deep="#04140E",
+    platform="macOS", state="ARCHIVED", accent=GREEN, deep="#04140E",
     logo=("github",),
-    blurb=["Watch what Claude is doing inside Xcode. The only surface here",
-           "you can clone, read and run for yourself."],
+    blurb=["Watch what Claude is doing inside Xcode. Archived and no longer",
+           "maintained — the source stays here to clone, read and run."],
     chips=["Swift", "Xcode", "MIT"],
     url="github.com/daifukus/vibeclauded", instrument="ticker",
 )
@@ -599,10 +660,175 @@ def inst_ticker(x, y, w, a):
     return "".join(o), ""
 
 
+def inst_distance(x, y, w, a):
+    """Cooked: today's scroll on the track to the limit, and Doomie's mood.
+
+    The app's own numbers: 1.1 m a minute, a 150 m default limit, nudges at
+    50, 80 and 100 % — and the mood bands fresh, hooked, cooked."""
+    tw, limit, today = 360, 150, 118
+    scale = tw / (limit * 1.2)                 # the track runs to 120 %
+    o = [text(x, y - 2, "TODAY · LIMIT 150 m", face=MONO, size=9, fill=MUTE,
+              track=1.4, cls="rise", delay=0.6),
+         f'<rect x="{x}" y="{y + 18}" width="{tw}" height="14" rx="7" '
+         f'fill="{rgba(a, 0.1)}" stroke="{rgba(a, 0.2)}"/>',
+         f'<rect x="{x}" y="{y + 18}" width="{today * scale:.0f}" height="14" '
+         f'rx="7" fill="{a}" class="wipe" '
+         f'style="animation-delay:.8s;animation-duration:1.6s"/>']
+    for pct in (50, 80, 100):
+        tx = x + limit * pct / 100 * scale
+        o.append(f'<line x1="{tx:.0f}" y1="{y + 12}" x2="{tx:.0f}" '
+                 f'y2="{y + 38}" stroke="{INK if pct == 100 else MUTE}" '
+                 f'stroke-width="1" stroke-dasharray="2 2"/>')
+        o.append(text(tx, y + 50, f"{pct}%", face=MONO, size=8.5, fill=MUTE,
+                      anchor="middle", cls="rise", delay=1.2))
+    for i, (name, lo, hi) in enumerate((("FRESH", 0, 50), ("HOOKED", 50, 100),
+                                        ("COOKED", 100, 120))):
+        mx = x + limit * (lo + hi) / 200 * scale
+        on = lo <= today / limit * 100 < hi
+        o.append(text(mx, y + 74, name, face=MONO, size=9,
+                      fill=a if on else rgba(a, 0.38), weight="700" if on
+                      else None, track=1.4, anchor="middle", cls="rise",
+                      delay=1.5 + i * 0.1))
+    lx = x + tw + 30
+    o.append(text(lx, y + 18, "SCROLLED", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.6))
+    o.append(text(lx, y + 46, f"{today} m", face=MONO, size=24, fill=a,
+                  weight="700", cls="pop", delay=1.75))
+    o.append(text(lx, y + 68, "≈ 0.36 × Eiffel Tower", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.9))
+    return "".join(o), ""
+
+
+def inst_tablet(x, y, w, a):
+    """Aqua Lateris: a deduction written on clay, word by word, then sealed."""
+    tyre, bone = "#C0558D", "#EDE4D3"
+    o = [f'<rect x="{x}" y="{y}" width="330" height="86" rx="10" '
+         f'fill="{rgba(bone, 0.06)}" stroke="{rgba(a, 0.28)}"/>',
+         text(x + 14, y + 18, "THE TABLET · DEDUCTION", face=MONO, size=8.5,
+              fill=MUTE, track=1.4, cls="rise", delay=0.7)]
+    words = [("The", 0), ("cargo", 1), ("never", 1), ("left", 0), ("Joppa", 1)]
+    cx = x + 14
+    for i, (wd, key) in enumerate(words):
+        ww = 16 + len(wd) * 7.6
+        o.append(grp(f'<rect x="{cx:.0f}" y="{y + 32}" width="{ww:.0f}" '
+                     f'height="24" rx="4" fill="{rgba(a, 0.16 if key else 0.06)}"'
+                     f' stroke="{rgba(a, 0.4 if key else 0.16)}"/>'
+                     + text(cx + ww / 2, y + 48.5, wd, face=SERIF_TEXT, size=13,
+                            fill=bone if key else BODY, anchor="middle"),
+                     cls="pop", delay=0.9 + i * 0.22))
+        cx += ww + 6
+    sx, sy = x + 296, y + 44
+    o.append(grp(f'<circle cx="{sx}" cy="{sy}" r="17" fill="{tyre}"/>'
+                 f'<circle cx="{sx}" cy="{sy}" r="11" fill="none" '
+                 f'stroke="{rgba("#ffffff", 0.35)}" stroke-width="1.2"/>'
+                 + text(sx, sy + 4, "✓", face=SANS, size=12, fill="#ffffff",
+                        anchor="middle"),
+                 cls="pop", delay=2.2))
+    o.append(text(x + 14, y + 76, "sealed — the testimony holds", face=SANS,
+                  size=10, fill=rgba(a, 0.8), cls="rise", delay=2.4))
+    lx = x + 352
+    o.append(text(lx, y + 18, "BOOK I", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.5))
+    o.append(text(lx, y + 46, "2 chapters", face=SERIF_TEXT, size=22, fill=a,
+                  cls="pop", delay=1.65))
+    o.append(text(lx, y + 68, "EN · ES · free to play", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.8))
+    return "".join(o), ""
+
+
+def inst_cue(x, y, w, a):
+    """Cue: the watch before and after a double tap — black, then a point."""
+    def watch(wx, body):
+        return (f'<rect x="{wx + 18}" y="{y - 6}" width="40" height="8" rx="3" '
+                f'fill="{rgba("#ffffff", 0.06)}"/>'
+                f'<rect x="{wx + 18}" y="{y + 76}" width="40" height="8" rx="3" '
+                f'fill="{rgba("#ffffff", 0.06)}"/>'
+                f'<rect x="{wx}" y="{y}" width="76" height="78" rx="18" '
+                f'fill="#000000" stroke="{rgba("#ffffff", 0.18)}" '
+                f'stroke-width="2"/>' + body)
+    o = [grp(watch(x, text(x + 38, y + 96, "BEFORE", face=MONO, size=8,
+                           fill=MUTE, track=1.4, anchor="middle")),
+             cls="rise", delay=0.7)]
+    # the pinch, between the two
+    px = x + 118
+    o.append(grp(f'<circle cx="{px}" cy="{y + 39}" r="5" fill="{a}" '
+                 f'class="beat"/>'
+                 f'<circle cx="{px}" cy="{y + 39}" r="5" fill="none" '
+                 f'stroke="{a}" stroke-width="1.2" class="halo"/>'
+                 + text(px, y + 62, "DOUBLE TAP", face=MONO, size=8, fill=a,
+                        track=1.2, anchor="middle"),
+                 cls="rise", delay=1.1))
+    wx = x + 160
+    point = (text(wx + 10, y + 28, "Open with", face=SANS, size=10.5,
+                  fill="#ffffff", weight="700")
+             + text(wx + 10, y + 43, "the first-", face=SANS, size=10.5,
+                    fill="#ffffff", weight="700")
+             + text(wx + 10, y + 58, "customer story", face=SANS, size=10.5,
+                    fill="#ffffff", weight="700"))
+    o.append(grp(watch(wx, grp(point, cls="flash")
+                       + text(wx + 38, y + 96, "AFTER", face=MONO, size=8,
+                              fill=MUTE, track=1.4, anchor="middle")),
+                 cls="rise", delay=0.85))
+    lx = x + 270
+    o.append(text(lx, y + 18, "ON SCREEN", face=MONO, size=9, fill=MUTE,
+                  track=1.6, cls="rise", delay=1.5))
+    o.append(text(lx, y + 46, "1–6 s", face=MONO, size=24, fill=a,
+                  weight="700", cls="pop", delay=1.65))
+    o.append(text(lx, y + 68, "then black again", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.8))
+    # the point shows for a moment and goes; the reduced-motion block leaves
+    # it showing, which is the frame that explains the app
+    css = ("\n  .flash{animation:flash 5s ease-in-out 1.4s infinite}"
+           "\n  @keyframes flash{0%{opacity:0}8%,48%{opacity:1}"
+           "58%,100%{opacity:0}}")
+    return "".join(o), css
+
+
+def inst_face(x, y, w, a):
+    """Nitnoi: the watch face — the words packed inside, the money round the
+    edge, the clock's box kept clear."""
+    fw, fh = 150, 92
+    o = [f'<rect x="{x}" y="{y - 4}" width="{fw}" height="{fh}" rx="22" '
+         f'fill="#000000" stroke="{rgba("#ffffff", 0.18)}" stroke-width="2"/>']
+    # money along the edge
+    notes = [("฿20", x + 30, y + 6), ("฿50", x + 75, y + 6),
+             ("฿100", x + 120, y + 6), ("฿500", x + 40, y + 84),
+             ("฿1000", x + 100, y + 84)]
+    for i, (n, nx, ny) in enumerate(notes):
+        o.append(text(nx, ny, n, face=MONO, size=7, fill=rgba(a, 0.7),
+                      anchor="middle", cls="rise", delay=1.6 + i * 0.06))
+    # the clock's box, top right, kept clear
+    o.append(f'<rect x="{x + 96}" y="{y + 14}" width="44" height="20" rx="3" '
+             f'fill="none" stroke="{rgba("#ffffff", 0.12)}" '
+             f'stroke-dasharray="2 2"/>')
+    o.append(text(x + 118, y + 29, "10:09", face=SANS, size=12, fill=INK,
+                  weight="700", anchor="middle"))
+    # the first line stops short of the clock, the way the engine packs it
+    rows = [("sawasdee",), ("khop khun", "tao rai?"), ("phaeng", "mai ao"),
+            ("aroi", "nitnoi")]
+    for r, words in enumerate(rows):
+        o.append(text(x + 12, y + 26 + r * 15, "  ".join(words), face=SANS,
+                      size=10, fill=INK if r != 1 else a, weight="600",
+                      cls="rise", delay=0.9 + r * 0.15))
+    lx = x + fw + 30
+    o.append(text(lx, y + 4, "THE MONEY RUNS ROUND THE EDGE", face=MONO,
+                  size=8.5, fill=MUTE, track=1.2, cls="rise", delay=1.4))
+    o.append(text(lx, y + 22, "THE WORDS PACK TO THE SHAPE", face=MONO,
+                  size=8.5, fill=MUTE, track=1.2, cls="rise", delay=1.5))
+    o.append(text(lx, y + 56, "26", face=MONO, size=26, fill=a, weight="700",
+                  cls="pop", delay=1.7))
+    o.append(text(lx + 42, y + 56, "countries ready to edit", face=SANS,
+                  size=11, fill=MUTE, cls="rise", delay=1.85))
+    o.append(text(lx, y + 78, "16 words each · romanised", face=SANS, size=11,
+                  fill=MUTE, cls="rise", delay=1.95))
+    return "".join(o), ""
+
+
 INSTRUMENTS = {
     "expiry": inst_expiry, "handicap": inst_handicap, "sets": inst_sets,
     "seismic": inst_seismic, "tools": inst_tools, "board": inst_board,
-    "ticker": inst_ticker,
+    "ticker": inst_ticker, "distance": inst_distance, "tablet": inst_tablet,
+    "cue": inst_cue, "face": inst_face,
 }
 
 
@@ -621,7 +847,9 @@ def card(p, *, wide=False, live=None):
     o.append(tag)
     o.append(text(PAD + tw + 12, 53.5, p["platform"], face=MONO, size=9.5,
                   fill=MUTE, track=1.2, cls="rise", delay=0.58))
-    o.append(state_dot(w - PAD - 63, 50, p["state"], a, 0.66))
+    # sized to the label, so LIVE and ARCHIVED both end on the right margin
+    o.append(state_dot(w - PAD - 16 - len(p["state"]) * 7.4, 50, p["state"],
+                       a, 0.66))
 
     o.append(logo(p["logo"], PAD, 78, 52, a))
     o.append(text(PAD + 68, 112, p["mark"], face=p["face"], size=27, fill=INK,
@@ -687,6 +915,11 @@ def card(p, *, wide=False, live=None):
 """
 
 
+NUMBERS = {n: w for n, w in enumerate(
+    "ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE TEN ELEVEN TWELVE "
+    "THIRTEEN FOURTEEN FIFTEEN".split())}
+
+
 # ── The header ───────────────────────────────────────────────────────────────
 
 def header():
@@ -740,7 +973,8 @@ def header():
                   anchor="middle", cls="rise", delay=0.92))
 
     o.append(rule(0, h - 46, w, HAIR))
-    o.append(text(32, h - 20, "SEVEN SURFACES · ONE FRAME", face=MONO,
+    count = NUMBERS[len(PRODUCTS) + 1]
+    o.append(text(32, h - 20, f"{count} SURFACES · ONE FRAME", face=MONO,
                   size=9.5, fill=MUTE, track=2, cls="rise", delay=1.1))
     o.append(text(w - 32, h - 20, "ENGINEERED IN SILENCE.", face=MONO,
                   size=9.5, fill=MUTE, track=2, anchor="end", cls="rise",
@@ -771,10 +1005,10 @@ def footer():
     marks.append((OPEN_SOURCE["mark"], OPEN_SOURCE["accent"]))
     x = 32
     for i, (name, a) in enumerate(marks):
-        o.append(f'<rect x="{x}" y="40" width="58" height="3" fill="{a}" '
+        o.append(f'<rect x="{x}" y="40" width="64" height="3" fill="{a}" '
                  f'class="tick" style="animation-delay:{i * 0.42:.2f}s"/>')
         o.append(text(x, 64, name, face=MONO, size=8.5, fill=MUTE, track=1.2))
-        x += 72
+        x += 86
     o.append(text(w - 32, 46, "ENGINEERED IN SILENCE.", face=MONO, size=11,
                   fill=INK, track=2.4, anchor="end"))
     o.append(text(w - 32, 64, "© 2026 DFK Labs", face=MONO, size=9.5,

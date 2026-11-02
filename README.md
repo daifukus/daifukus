@@ -8,24 +8,34 @@
 
 ## `///` DEPLOYMENTS
 
+Live first, then the workshop, ordered by how far each one can go.
+
 <table>
 <tr>
-<td width="50%"><a href="https://risu.dfklabs.com"><img src="assets/card-risu.svg" width="100%" alt="RISU — Smart documents, iOS, coming soon. The documents that expire: passport, ID, licence, insurance."/></a></td>
-<td width="50%"><a href="https://birdio.dfklabs.com"><img src="assets/card-birdio.svg" width="100%" alt="BIRDIO — Golf and minigolf, iOS, coming soon. A WHS-style index from your best 8 of the last 20."/></a></td>
-</tr>
-<tr>
-<td width="50%"><a href="https://mule.dfklabs.com"><img src="assets/card-mule.svg" width="100%" alt="MULE — Strength training, iOS and watchOS, coming soon. Every session scored against your own baseline, every tip citing its study."/></a></td>
+<td width="50%"><a href="https://birdio.dfklabs.com"><img src="assets/card-birdio.svg" width="100%" alt="BIRDIO — Golf and minigolf, iOS and watchOS, live. A WHS-style index from your best 8 of the last 20."/></a></td>
 <td width="50%"><a href="https://quake.dfklabs.com"><img src="assets/card-quake.svg" width="100%" alt="QUAKE — Seismic monitor, web PWA, live. USGS and EMSC catalogues, aftershock outlooks stated as statistics."/></a></td>
 </tr>
 <tr>
 <td width="50%"><a href="https://studio.dfklabs.com"><img src="assets/card-studio.svg" width="100%" alt="STUDIO — Browser tools, web, live. Thirty-odd converters and image tools that keep working offline."/></a></td>
-<td width="50%"><a href="https://paneltir.dfklabs.com"><img src="assets/card-paneltir.svg" width="100%" alt="PANELTIR — UI kit, React and TypeScript, live. The admin-panel kit behind every DFK board."/></a></td>
+<td width="50%"><a href="https://dfklabs.com"><img src="assets/card-cooked.svg" width="100%" alt="COOKED — Screen time, iOS, in development. Feed time turned into the distance your thumb scrolled, and Doomie tells you when to stop."/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="https://risu.dfklabs.com"><img src="assets/card-risu.svg" width="100%" alt="RISU — Smart documents, iOS, coming soon. The documents that expire: passport, ID, licence, insurance."/></a></td>
+<td width="50%"><a href="https://mule.dfklabs.com"><img src="assets/card-mule.svg" width="100%" alt="MULE — Strength training, iOS and watchOS, coming soon. Every session scored against your own baseline, every tip citing its study."/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="https://dfklabs.com/aqualateris"><img src="assets/card-aqualateris.svg" width="100%" alt="AQUA LATERIS — Deduction adventure for Apple platforms, coming soon. Book I, The Passenger: a mystery on the ancient sea, free, no ads, no account."/></a></td>
+<td width="50%"><a href="https://dfklabs.com/cue"><img src="assets/card-cue.svg" width="100%" alt="CUE — Speech notes, iOS and watchOS, coming soon. The watch screen stays black; a double tap shows your next point for a moment."/></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="https://dfklabs.com"><img src="assets/card-nitnoi.svg" width="100%" alt="NITNOI — Travel phrasebook, iOS and watchOS, in development. Sixteen words and the country's banknotes, drawn into your Apple Watch face."/></a></td>
+<td width="50%"><a href="https://paneltir.dfklabs.com"><img src="assets/card-paneltir.svg" width="100%" alt="PANELTIR — UI kit, internal, React and TypeScript, coming soon. The admin-panel kit behind every DFK board."/></a></td>
 </tr>
 </table>
 
 <div align="center">
 
-**[dfklabs.com](https://dfklabs.com)** — the portal the six of them hang from.
+**[dfklabs.com](https://dfklabs.com)** — the portal they all hang from.
 Static HTML on Vercel. No framework, no build step, push to deploy.
 
 </div>
@@ -34,7 +44,7 @@ Static HTML on Vercel. No framework, no build step, push to deploy.
 
 ## `///` OPEN SOURCE
 
-<a href="https://github.com/daifukus/vibeclauded"><img src="assets/card-vibeclaude.svg" width="100%" alt="VIBECLAUDE — Xcode monitor, open source. Watch what Claude is doing inside Xcode."/></a>
+<a href="https://github.com/daifukus/vibeclauded"><img src="assets/card-vibeclaude.svg" width="100%" alt="VIBECLAUDE — Xcode monitor, open source, archived. Watch what Claude is doing inside Xcode."/></a>
 
 <br>
 
