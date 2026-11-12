@@ -220,6 +220,15 @@ PRODUCTS = [
     ),
 ]
 
+# Parked on dfklabs.com (DFK #65): wrapped in <template data-dfk-parked>, so
+# the portal renders none of them. The profile follows the portal — they stay
+# defined here, out of the header count and the footer strip.
+PARKED = {"risu", "mule", "aqualateris", "paneltir"}
+# What the portal shows, in its order.
+SHOWN_ORDER = ["birdio", "nitnoi", "cue", "cooked", "quake", "studio"]
+SHOWN = sorted((p for p in PRODUCTS if p["slug"] not in PARKED),
+               key=lambda p: SHOWN_ORDER.index(p["slug"]))
+
 OPEN_SOURCE = dict(
     slug="vibeclaude", mark="VIBECLAUDE", face=MONO, tag="CLI TOOL",
     platform="macOS", state="ARCHIVED", accent=GREEN, deep="#04140E",
@@ -973,7 +982,7 @@ def header():
                   anchor="middle", cls="rise", delay=0.92))
 
     o.append(rule(0, h - 46, w, HAIR))
-    count = NUMBERS[len(PRODUCTS) + 1]
+    count = NUMBERS[len(SHOWN) + 1]
     o.append(text(32, h - 20, f"{count} SURFACES · ONE FRAME", face=MONO,
                   size=9.5, fill=MUTE, track=2, cls="rise", delay=1.1))
     o.append(text(w - 32, h - 20, "ENGINEERED IN SILENCE.", face=MONO,
@@ -1001,7 +1010,7 @@ def header():
 def footer():
     w, h = 1240, 116
     o = [f'<rect width="{w}" height="{h}" fill="{BG}"/>', rule(0, 0, w, LINE)]
-    marks = [(p["mark"], p["accent"]) for p in PRODUCTS]
+    marks = [(p["mark"], p["accent"]) for p in SHOWN]
     marks.append((OPEN_SOURCE["mark"], OPEN_SOURCE["accent"]))
     x = 32
     for i, (name, a) in enumerate(marks):
@@ -1194,7 +1203,7 @@ def main():
         written.append((name, p.stat().st_size))
 
     put("header.svg", header())
-    for prod in PRODUCTS:
+    for prod in SHOWN:
         put(f"card-{prod['slug']}.svg", card(prod, live=live))
     put("card-vibeclaude.svg", card(OPEN_SOURCE, wide=True))
     put("footer.svg", footer())
